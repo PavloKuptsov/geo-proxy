@@ -20,4 +20,4 @@ node _nodejs/index.js  1> /dev/null 2> /dev/null &
 #node _nodejs/index.js
 
 # Start Sunflower Proxy
-gunicorn -b 0.0.0.0:8082 'server:create_app()' > gunicorn.log 2>&1
+#gunicorn -b 0.0.0.0:8082 'server:create_app()' > gunicorn.log 2>&1

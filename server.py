@@ -4,12 +4,14 @@ import shutil
 from datetime import datetime
 
 from flask import Flask, request, Response
+from flask_cors import CORS
 
 SETTINGS_FILE = 'settings.json'
 BACKUP_DIR_NAME = 'settings_backups'
 
 
 app = Flask(__name__)
+CORS(app)
 
 
 @app.post('/frequency')
