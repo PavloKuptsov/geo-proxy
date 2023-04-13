@@ -18,14 +18,19 @@ CORS(app)
 def frequency():
     payload = request.json
     try:
-        freq = float(payload.get('frequency'))
+        freqMHz = float(payload.get('frequency'))
     except (ValueError, TypeError):
         return Response(None, status=400)
+
 
     with open(SETTINGS_FILE) as file:
         settings = json.loads(file.read())
 
-    settings['center_freq'] = freq
+    settings['center_freq'] = freqMHz
+    freqHz = int(freqMHz * 1000 * 1000)
+    for i in range(0, 16):
+        settings['vfo_freq_' + str(i)] = freqHz
+
     with open(SETTINGS_FILE, 'w') as file:
         file.write(json.dumps(settings, indent=2))
     return Response(None, status=200)
