@@ -6,8 +6,9 @@ from datetime import datetime
 from flask import Flask, request, Response
 from flask_cors import CORS
 
-SETTINGS_FILE = 'settings.json'
-BACKUP_DIR_NAME = 'settings_backups'
+SETTINGS_FILENAME = 'settings.json'
+SETTINGS_FILE = f'/home/krakenrf/krakensdr_doa/krakensdr_doa/{SETTINGS_FILENAME}'
+BACKUP_DIR_NAME = '/home/krakenrf/krakensdr_doa/krakensdr_doa/settings_backups'
 
 
 app = Flask(__name__)
@@ -18,18 +19,17 @@ CORS(app)
 def frequency():
     payload = request.json
     try:
-        freqMHz = float(payload.get('frequency'))
+        freq_mhz = float(payload.get('frequency'))
     except (ValueError, TypeError):
         return Response(None, status=400)
-
 
     with open(SETTINGS_FILE) as file:
         settings = json.loads(file.read())
 
-    settings['center_freq'] = freqMHz
-    freqHz = int(freqMHz * 1000 * 1000)
+    settings['center_freq'] = freq_mhz
+    freq_hz = int(freq_mhz * 1000000)
     for i in range(0, 16):
-        settings['vfo_freq_' + str(i)] = freqHz
+        settings['vfo_freq_' + str(i)] = freq_hz
 
     with open(SETTINGS_FILE, 'w') as file:
         file.write(json.dumps(settings, indent=2))
@@ -46,7 +46,7 @@ def create_app():
     if not os.path.exists(BACKUP_DIR_NAME):
         os.makedirs(BACKUP_DIR_NAME)
 
-    destination = f'{BACKUP_DIR_NAME}/{now.strftime("%Y%m%d-%H%M%S")}-{SETTINGS_FILE}.bak'
+    destination = f'{BACKUP_DIR_NAME}/{now.strftime("%Y%m%d-%H%M%S")}-{SETTINGS_FILENAME}.bak'
     shutil.copyfile(SETTINGS_FILE, destination)
     return app
 

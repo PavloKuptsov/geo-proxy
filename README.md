@@ -1,10 +1,10 @@
 # geo-proxy
 
 ## Installation
-Copy server.py, requirements.txt and gui_run.sh to `~/krakensdr_doa/krakensdr_doa`
+Copy geo-proxy directory to `/home/krakenrf`
 ```
-sudo apt install pip gunicorn
-pip3 install --system -r requirements.txt
+sudo apt install python3-pip gunicorn
+sudo pip install --system -r requirements.txt
 sudo iptables -A INPUT -p tcp --dport 8082 -j ACCEPT
 gunicorn -b 0.0.0.0:8082 'server:create_app()'
 ```
