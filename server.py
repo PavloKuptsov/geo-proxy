@@ -19,15 +19,18 @@ CORS(app)
 def frequency():
     payload = request.json
     try:
-        freq_mhz = float(payload.get('frequency'))
+        freq_hz = int(payload.get('frequency'))
     except (ValueError, TypeError):
+        return Response(None, status=400)
+
+    if not _is_valid_frequency(freq_hz):
         return Response(None, status=400)
 
     with open(SETTINGS_FILE) as file:
         settings = json.loads(file.read())
 
+    freq_mhz = 1.0 * freq_hz / (1000 * 1000)
     settings['center_freq'] = freq_mhz
-    freq_hz = int(freq_mhz * 1000000)
     for i in range(0, 16):
         settings['vfo_freq_' + str(i)] = freq_hz
 
@@ -53,3 +56,10 @@ def create_app():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8082)
+
+
+def _is_valid_frequency(frequency_hz: int) -> bool:
+    min_supported_freq_hz = 24 * 1000 * 1000
+    max_supported_freq_hz = 1766 * 1000 * 1000
+    return frequency_hz in range(min_supported_freq_hz, max_supported_freq_hz)
+
