@@ -11,6 +11,12 @@ SETTINGS_FILE = f'/home/krakenrf/krakensdr_doa/krakensdr_doa/{SETTINGS_FILENAME}
 BACKUP_DIR_NAME = '/home/krakenrf/krakensdr_doa/krakensdr_doa/settings_backups'
 
 
+def _is_valid_frequency(frequency_hz: int) -> bool:
+    min_supported_freq_hz = 24 * 1000 * 1000
+    max_supported_freq_hz = 1766 * 1000 * 1000
+    return min_supported_freq_hz < frequency_hz < max_supported_freq_hz
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -56,10 +62,3 @@ def create_app():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8082)
-
-
-def _is_valid_frequency(frequency_hz: int) -> bool:
-    min_supported_freq_hz = 24 * 1000 * 1000
-    max_supported_freq_hz = 1766 * 1000 * 1000
-    return frequency_hz in range(min_supported_freq_hz, max_supported_freq_hz)
-
