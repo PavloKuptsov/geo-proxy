@@ -85,10 +85,14 @@ def ping():
 @app.get('/cache')
 def cache():
     confidence = request.args.get('confidence')
+    rssi = request.args.get('rssi')
+    result = list(app.cache)
+
     if confidence:
-        result = [item for item in app.cache if item[2] >= float(confidence)]
-    else:
-        result = list(app.cache)
+        result = [item for item in result if item[2] >= float(confidence)]
+
+    if rssi:
+        result = [item for item in result if item[3] >= float(rssi)]
 
     return jsonify({
         'lat': app.latitude,
