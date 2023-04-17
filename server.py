@@ -86,7 +86,7 @@ def ping():
 def cache():
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
-    result = list(app.cache)
+    result = sorted(list(app.cache), key=lambda x: x[0], reverse=True)
 
     if confidence:
         result = [item for item in result if item[2] >= float(confidence)]
