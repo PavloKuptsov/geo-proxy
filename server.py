@@ -96,7 +96,7 @@ def cache():
         result = [item for item in result if item[3] >= float(rssi)]
 
     if newer_than:
-        result = [item for item in result if item[0] > int(newer_than)]
+        result = [item for item in result if item[0] >= int(newer_than)]
 
     return jsonify({
         'lat': app.latitude,
