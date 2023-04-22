@@ -33,7 +33,7 @@ CORS(app)
 
 def update_cache():
     now = datetime.now()
-    print(f'Cache update started {now.isoformat()}')
+    # print(f'Cache update started {now.isoformat()}')
     time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
     app.cache = set([item for item in app.cache if item[0] >= time_threshold])
 
@@ -87,6 +87,7 @@ def cache():
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     result = sorted(list(app.cache), key=lambda x: x[0], reverse=True)
+    latest = result[0] if result else None
 
     if confidence:
         result = [item for item in result if item[2] >= float(confidence)]
@@ -98,6 +99,7 @@ def cache():
         'lat': app.latitude,
         'lon': app.longitude,
         'arr': app.arrangement,
+        'freq': latest[4] if latest else None,
         'data': result
     })
 
