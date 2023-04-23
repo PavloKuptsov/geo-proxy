@@ -6,7 +6,7 @@ After=network.target
 User=krakenrf
 Group=krakenrf
 WorkingDirectory=/home/krakenrf/geo-proxy
-ExecStart=/usr/bin/gunicorn --bind 0.0.0.0:8082 server:create_app()
+ExecStart=/usr/bin/gunicorn --bind 0.0.0.0:8082 --timeout 1000 server:create_app()
 
 [Install]
 WantedBy=multi-user.target
