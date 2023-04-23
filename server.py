@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import shutil
+import traceback
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -24,6 +26,12 @@ def _is_valid_frequency(frequency_hz: int) -> bool:
 
 
 app = Flask(__name__)
+
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+
 app.cache = set()
 app.latitude = 0
 app.longitude = 0
@@ -32,49 +40,61 @@ CORS(app)
 
 
 def update_cache():
-    now = datetime.now()
-    # print(f'Cache update started {now.isoformat()}')
-    time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
-    app.cache = set([item for item in app.cache if item[0] >= time_threshold])
+    try:
+        now = datetime.now()
+        app.logger.info(f'Cache update started {now.isoformat()}')
+        time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
+        app.cache = set([item for item in app.cache if item[0] >= time_threshold])
 
-    with open(DOA_FILE) as f:
-        lines = f.read().split('\n')
+        with open(DOA_FILE) as f:
+            lines = f.read().split('\n')
 
-    for line in lines:
-        if not line:
-            continue
+        for line in lines:
+            if not line:
+                app.logger.info('Empty DOA file, skipping')
+                continue
 
-        ll = line.split(', ')
-        data = (int(ll[0]), int(ll[1]), float(ll[2]), float(ll[3]), int(ll[4]))
-        app.arrangement = ll[5]
-        app.latitude = float(ll[8])
-        app.longitude = float(ll[9])
-        if data[0] > time_threshold:
-            app.cache.add(data)
+            ll = line.split(', ')
+            if len(ll) < 9:
+                app.logger.info(f'DOA is of the wrong format: {ll}')
+                continue
+
+            data = (int(ll[0]), int(ll[1]), float(ll[2]), float(ll[3]), int(ll[4]))
+            app.arrangement = ll[5]
+            app.latitude = float(ll[8])
+            app.longitude = float(ll[9])
+            if data[0] > time_threshold:
+                app.cache.add(data)
+    except:
+        app.logger.error(traceback.format_exc())
 
 
 @app.post('/frequency')
 def frequency():
-    payload = request.json
     try:
-        frequency_hz = int(payload.get('frequency_hz'))
-    except (ValueError, TypeError):
+        payload = request.json
+        try:
+            frequency_hz = int(payload.get('frequency_hz'))
+        except (ValueError, TypeError):
+            return Response(None, status=400)
+
+        if not _is_valid_frequency(frequency_hz):
+            return Response(None, status=400)
+
+        with open(SETTINGS_FILE) as file:
+            settings = json.loads(file.read())
+
+        frequency_mhz = frequency_hz / 1000000.0
+        settings['center_freq'] = frequency_mhz
+        for i in range(0, 16):
+            settings['vfo_freq_' + str(i)] = frequency_hz
+
+        with open(SETTINGS_FILE, 'w') as file:
+            file.write(json.dumps(settings, indent=2))
+        return Response(None, status=200)
+    except:
+        app.logger.error(traceback.format_exc())
         return Response(None, status=400)
-
-    if not _is_valid_frequency(frequency_hz):
-        return Response(None, status=400)
-
-    with open(SETTINGS_FILE) as file:
-        settings = json.loads(file.read())
-
-    frequency_mhz = frequency_hz / 1000000.0
-    settings['center_freq'] = frequency_mhz
-    for i in range(0, 16):
-        settings['vfo_freq_' + str(i)] = frequency_hz
-
-    with open(SETTINGS_FILE, 'w') as file:
-        file.write(json.dumps(settings, indent=2))
-    return Response(None, status=200)
 
 
 @app.get('/')
