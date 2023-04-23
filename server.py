@@ -42,7 +42,6 @@ CORS(app)
 def update_cache():
     try:
         now = datetime.now()
-        app.logger.info(f'Cache update started {now.isoformat()}')
         time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
 
@@ -51,7 +50,6 @@ def update_cache():
 
         for line in lines:
             if not line:
-                app.logger.info('Empty DOA file, skipping')
                 continue
 
             ll = line.split(', ')
@@ -131,6 +129,7 @@ def create_app():
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=update_cache, trigger='interval', seconds=DOA_READ_REGULARITY_MS / 1000.0)
     scheduler.start()
+    app.logger.info(f'Cache updater started {now.isoformat()}, running')
 
     destination = f'{BACKUP_DIR_NAME}/{now.strftime("%Y%m%d-%H%M%S")}-{SETTINGS_FILENAME}.bak'
     shutil.copyfile(SETTINGS_FILE, destination)
