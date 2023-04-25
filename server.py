@@ -104,6 +104,7 @@ def ping():
 def cache():
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
+    newer_than = request.args.get('newer_than')
     result = sorted(list(app.cache), key=lambda x: x[0], reverse=True)
     latest = result[0] if result else None
 
@@ -112,6 +113,9 @@ def cache():
 
     if rssi:
         result = [item for item in result if item[3] >= float(rssi)]
+
+    if newer_than:
+        result = [item for item in result if item[0] >= int(newer_than)]
 
     return jsonify({
         'lat': app.latitude,
