@@ -79,21 +79,28 @@ def frequency():
         if not _is_valid_frequency(frequency_hz):
             return Response(None, status=400)
 
-        with open(SETTINGS_FILE) as file:
-            settings = json.loads(file.read())
-
+        settings = dict()
         frequency_mhz = frequency_hz / 1000000.0
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
-
-        with open(SETTINGS_FILE, 'w') as file:
-            file.write(json.dumps(settings, indent=2))
+        __update_kraken_config(settings)
         return Response(None, status=200)
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
 
+@app.post('/coordinates')
+def coordinates():
+    try:
+        payload = request.json
+        lat = float(payload.get('lat'))
+        lon = float(payload.get('lon'))
+        settings = {'lat': lat, 'lon': lon}
+        __update_kraken_config(settings)
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=400)
 
 @app.get('/')
 def ping():
@@ -124,6 +131,17 @@ def cache():
         'freq': latest[4] if latest else None,
         'data': result
     })
+
+
+def __update_kraken_config(data: dict):
+    with open(SETTINGS_FILE) as file:
+        settings = json.loads(file.read())
+
+    for key in data:
+        settings[key] = data[key]
+
+    with open(SETTINGS_FILE, 'w') as file:
+        file.write(json.dumps(settings, indent=2))
 
 
 def create_app():
