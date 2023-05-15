@@ -22,7 +22,18 @@ DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
 def _is_valid_frequency(frequency_hz: int) -> bool:
     min_supported_freq_hz = 24 * 1000 * 1000
     max_supported_freq_hz = 1766 * 1000 * 1000
-    return min_supported_freq_hz < frequency_hz < max_supported_freq_hz
+    return min_supported_freq_hz <= frequency_hz <= max_supported_freq_hz
+
+
+def _update_kraken_config(data: dict):
+    with open(SETTINGS_FILE) as file:
+        settings = json.loads(file.read())
+
+    for key in data:
+        settings[key] = data[key]
+
+    with open(SETTINGS_FILE, 'w') as file:
+        file.write(json.dumps(settings, indent=2))
 
 
 app = Flask(__name__)
@@ -79,17 +90,26 @@ def frequency():
         if not _is_valid_frequency(frequency_hz):
             return Response(None, status=400)
 
-        with open(SETTINGS_FILE) as file:
-            settings = json.loads(file.read())
-
         frequency_mhz = frequency_hz / 1000000.0
+        settings = dict()
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
-
-        with open(SETTINGS_FILE, 'w') as file:
-            file.write(json.dumps(settings, indent=2))
+        _update_kraken_config(settings)
         return Response(None, status=200)
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=400)
+
+
+@app.post('/coordinates')
+def coordinates():
+    try:
+        payload = request.json
+        lat = float(payload.get('lat'))
+        lon = float(payload.get('lon'))
+        settings = {'latitude': lat, 'longitude': lon}
+        _update_kraken_config(settings)
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
