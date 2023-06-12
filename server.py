@@ -19,6 +19,13 @@ DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
 
 
+def _to_int(value: str):
+    try:
+        return int(value)
+    except ValueError:
+        return int(float(value))
+
+
 def _is_valid_frequency(frequency_hz: int) -> bool:
     min_supported_freq_hz = 24 * 1000 * 1000
     max_supported_freq_hz = 1766 * 1000 * 1000
@@ -68,7 +75,7 @@ def update_cache():
                 app.logger.info(f'DOA is of the wrong format: {ll}')
                 continue
 
-            data = (int(ll[0]), int(ll[1]), float(ll[2]), float(ll[3]), int(ll[4]))
+            data = (_to_int(ll[0]), _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
             app.arrangement = ll[5]
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
