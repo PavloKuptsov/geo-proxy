@@ -46,7 +46,7 @@ def _update_kraken_config(data: dict):
 app = Flask(__name__)
 
 if __name__ != '__main__':
-    gunicorn_logger = logging.getLogger('gunicorn.error')
+    gunicorn_logger = logging.getLogger('gunicorn.info')
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
@@ -58,15 +58,21 @@ CORS(app)
 
 
 def update_cache():
+    app.logger.info(f'Updating app cache...')
     try:
+        app.logger.info(f'Current app cache size: {len(app.cache)}')
         now = datetime.now()
         time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
+        app.logger.info(f'Reduced by time threshold app cache size: {len(app.cache)}')
 
+        app.logger.info(f'Parsing {DOA_FILE}...')
         with open(DOA_FILE) as f:
             lines = f.read().split('\n')
+            app.logger.info(f'{len(lines)} lines read')
 
         for line in lines:
+            app.logger.info(f'Processing a line {line}...')
             if not line:
                 continue
 
@@ -80,7 +86,10 @@ def update_cache():
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
             if data[0] > time_threshold:
+                app.logger.info(f'Adding a line {data[0]} to cache')
                 app.cache.add(data)
+            else:
+                app.logger.info(f'Line {data[0]} is outdated. Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
@@ -129,6 +138,7 @@ def ping():
 
 @app.get('/cache')
 def cache():
+    app.logger.info(f'Responding with cache (args={request.args}). Current size: {len(app.cache)}')
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     newer_than = request.args.get('newer_than')
@@ -143,6 +153,8 @@ def cache():
 
     if newer_than:
         result = [item for item in result if item[0] >= int(newer_than)]
+
+    app.logger.info(f'Filtered cache size: {len(app.cache)}')
 
     return jsonify({
         'lat': app.latitude,
