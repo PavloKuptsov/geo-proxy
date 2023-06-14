@@ -44,6 +44,7 @@ def _update_kraken_config(data: dict):
 
 
 app = Flask(__name__)
+app.debug = True
 
 if __name__ != '__main__':
     gunicorn_logger = logging.getLogger('gunicorn.info')
