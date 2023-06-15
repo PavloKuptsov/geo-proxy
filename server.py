@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import shutil
+import time
 import traceback
 from datetime import datetime
 
@@ -62,8 +63,8 @@ def update_cache():
     app.logger.info(f'Updating app cache...')
     try:
         app.logger.info(f'Current app cache size: {len(app.cache)}')
-        now = datetime.now()
-        time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
+        now = int(time.time() * 1000)
+        time_threshold = now - DOA_TIME_THRESHOLD_MS
         app.logger.info(f'now = {now}, time_threshold = {time_threshold}')
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
         app.logger.info(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
