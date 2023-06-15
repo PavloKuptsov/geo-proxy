@@ -60,31 +60,31 @@ CORS(app)
 
 
 def update_cache():
-    app.logger.info(f'Updating app cache...')
+    app.logger.debug(f'Updating app cache...')
     try:
-        app.logger.info(f'Current app cache size: {len(app.cache)}')
+        app.logger.debug(f'Current app cache size: {len(app.cache)}')
         now = int(time.time() * 1000)
         time_threshold = now - DOA_TIME_THRESHOLD_MS
-        app.logger.info(f'now = {now}, time_threshold = {time_threshold}')
+        app.logger.debug(f'now = {now}, time_threshold = {time_threshold}')
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
-        app.logger.info(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
+        app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
-        app.logger.info(f'Parsing {DOA_FILE}...')
+        app.logger.debug(f'Parsing {DOA_FILE}...')
         with open(DOA_FILE) as f:
             read = f.read()
-            app.logger.info(f'Data read: {read[0:200]} ...')
+            app.logger.debug(f'Data read: {read[0:200]} ...')
             lines = read.split('\n')
-            app.logger.info(f'{len(lines)} lines read')
+            app.logger.debug(f'{len(lines)} lines read')
 
         for line in lines:
-            app.logger.info(f'Processing a line str={line[0:100]}...')
+            app.logger.debug(f'Processing a line str={line[0:100]}...')
             if not line:
-                app.logger.info(f'Line is too short. Skipping...')
+                app.logger.debug(f'Line is too short. Skipping...')
                 continue
 
             ll = line.split(', ')
             if len(ll) < 9:
-                app.logger.info(f'DOA is of the wrong format: {ll}')
+                app.logger.debug(f'DOA is of the wrong format: {ll}')
                 continue
 
             data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
@@ -92,10 +92,10 @@ def update_cache():
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
             if data[0] > time_threshold:
-                app.logger.info(f'Adding a line {line[0:30]} to cache')
+                app.logger.debug(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
             else:
-                app.logger.info(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
+                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
@@ -117,7 +117,7 @@ def frequency():
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
-        _update_kraken_config(settings)
+        #_update_kraken_config(settings)
         return Response(None, status=200)
     except:
         app.logger.error(traceback.format_exc())
