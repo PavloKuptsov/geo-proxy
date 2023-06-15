@@ -63,17 +63,21 @@ def update_cache():
         app.logger.info(f'Current app cache size: {len(app.cache)}')
         now = datetime.now()
         time_threshold = int(now.timestamp() * 1000) - DOA_TIME_THRESHOLD_MS
+        app.logger.info(f'now = {now}, time_threshold = {time_threshold}')
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
-        app.logger.info(f'Reduced by time threshold app cache size: {len(app.cache)}')
+        app.logger.info(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
         app.logger.info(f'Parsing {DOA_FILE}...')
         with open(DOA_FILE) as f:
-            lines = f.read().split('\n')
+            read = f.read()
+            app.logger.info(f'Data read: {read[0:200]} ...')
+            lines = read.split('\n')
             app.logger.info(f'{len(lines)} lines read')
 
         for line in lines:
-            app.logger.info(f'Processing a line {line}...')
+            app.logger.info(f'Processing a line str={line[0:100]}...')
             if not line:
+                app.logger.info(f'Line is too short. Skipping...')
                 continue
 
             ll = line.split(', ')
@@ -86,10 +90,10 @@ def update_cache():
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
             if data[0] > time_threshold:
-                app.logger.info(f'Adding a line {data[0]} to cache')
+                app.logger.info(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
             else:
-                app.logger.info(f'Line {data[0]} is outdated. Skipping...')
+                app.logger.info(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
