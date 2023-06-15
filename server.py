@@ -117,7 +117,7 @@ def frequency():
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
-        #_update_kraken_config(settings)
+        _update_kraken_config(settings)
         return Response(None, status=200)
     except:
         app.logger.error(traceback.format_exc())
