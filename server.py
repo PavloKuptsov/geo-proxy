@@ -87,7 +87,7 @@ def update_cache():
                 app.logger.info(f'DOA is of the wrong format: {ll}')
                 continue
 
-            data = (_to_int(ll[0]), _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
+            data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
             app.arrangement = ll[5]
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
