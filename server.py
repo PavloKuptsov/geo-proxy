@@ -144,7 +144,7 @@ def ping():
 
 @app.get('/cache')
 def cache():
-    app.logger.info(f'Responding with cache (args={request.args}). Current size: {len(app.cache)}')
+    app.logger.debug(f'Responding with cache (args={request.args}). Current size: {len(app.cache)}')
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     newer_than = request.args.get('newer_than')
@@ -160,7 +160,7 @@ def cache():
     if newer_than:
         result = [item for item in result if item[0] >= int(newer_than)]
 
-    app.logger.info(f'Filtered cache size: {len(app.cache)}')
+    app.logger.debug(f'Filtered cache size: {len(app.cache)}')
 
     return jsonify({
         'lat': app.latitude,
