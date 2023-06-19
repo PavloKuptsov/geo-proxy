@@ -130,7 +130,7 @@ def coordinates():
         payload = request.json
         lat = float(payload.get('lat'))
         lon = float(payload.get('lon'))
-        settings = {'latitude': lat, 'longitude': lon}
+        settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
         _update_kraken_config(settings)
     except:
         app.logger.error(traceback.format_exc())
