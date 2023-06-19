@@ -56,6 +56,7 @@ app.cache = set()
 app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
+app.alias = None
 CORS(app)
 
 
@@ -91,6 +92,9 @@ def update_cache():
             app.arrangement = ll[5]
             app.latitude = float(ll[8])
             app.longitude = float(ll[9])
+            if ll[7] != 'NOCALL':
+                app.alias = ll[7]
+
             if data[0] > time_threshold:
                 app.logger.debug(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
@@ -166,6 +170,7 @@ def cache():
         'lat': app.latitude,
         'lon': app.longitude,
         'arr': app.arrangement,
+        'alias': app.alias,
         'freq': latest[4] if latest else None,
         'data': result
     })
