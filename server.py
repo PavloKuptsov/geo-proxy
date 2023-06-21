@@ -44,6 +44,21 @@ def _update_kraken_config(data: dict):
         file.write(json.dumps(settings, indent=2))
 
 
+def _doa_last_updated_at() -> int:
+    try:
+        return int(os.path.getmtime(DOA_FILE) * 1000)
+    except OSError:
+        return 0
+
+
+def _kraken_doa_file_exists() -> bool:
+    return os.path.exists(DOA_FILE)
+
+
+def _kraken_settings_file_exists() -> bool:
+    return os.path.exists(SETTINGS_FILE)
+
+
 app = Flask(__name__)
 app.debug = True
 
@@ -53,6 +68,7 @@ if __name__ != '__main__':
     app.logger.setLevel(gunicorn_logger.level)
 
 app.cache = set()
+app.cache_last_updated_at = 0
 app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
@@ -69,33 +85,37 @@ def update_cache():
         app.cache = set([item for item in app.cache if item[0] >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
-        app.logger.debug(f'Parsing {DOA_FILE}...')
-        with open(DOA_FILE) as f:
-            read = f.read()
-            app.logger.debug(f'Data read: {read[0:200]} ...')
-            lines = read.split('\n')
-            app.logger.debug(f'{len(lines)} lines read')
+        if not _kraken_doa_file_exists():
+            app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
+        else:
+            app.logger.debug(f'Parsing {DOA_FILE}...')
+            with open(DOA_FILE) as f:
+                read = f.read()
+                app.logger.debug(f'Data read: {read[0:200]} ...')
+                lines = read.split('\n')
+                app.logger.debug(f'{len(lines)} lines read')
 
-        for line in lines:
-            app.logger.debug(f'Processing a line str={line[0:100]}...')
-            if not line:
-                app.logger.debug(f'Line is too short. Skipping...')
-                continue
+            for line in lines:
+                app.logger.debug(f'Processing a line str={line[0:100]}...')
+                if not line:
+                    app.logger.debug(f'Line is too short. Skipping...')
+                    continue
 
-            ll = line.split(', ')
-            if len(ll) < 9:
-                app.logger.debug(f'DOA is of the wrong format: {ll}')
-                continue
+                ll = line.split(', ')
+                if len(ll) < 9:
+                    app.logger.debug(f'DOA is of the wrong format: {ll}')
+                    continue
 
-            data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
-            app.arrangement = ll[5]
-            app.latitude = float(ll[8])
-            app.longitude = float(ll[9])
-            if data[0] > time_threshold:
-                app.logger.debug(f'Adding a line {line[0:30]} to cache')
-                app.cache.add(data)
-            else:
-                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
+                data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
+                app.arrangement = ll[5]
+                app.latitude = float(ll[8])
+                app.longitude = float(ll[9])
+                if data[0] > time_threshold:
+                    app.logger.debug(f'Adding a line {line[0:30]} to cache')
+                    app.cache.add(data)
+                    app.cache_last_updated_at = int(time.time() * 1000)
+                else:
+                    app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
@@ -142,6 +162,24 @@ def ping():
     return {"message": "ping"}
 
 
+@app.get('/healthcheck')
+def healthcheck():
+    now = int(time.time() * 1000)
+    doa_last_updated_at = _doa_last_updated_at()
+    doa_updated_ms_ago = now - doa_last_updated_at if doa_last_updated_at > 0 else None
+    cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
+    settings_file_exists = _kraken_settings_file_exists()
+    doa_file_exists = _kraken_doa_file_exists()
+    status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists
+    return {
+        "status_ok": status_ok,
+        "doa_updated_ms_ago": doa_updated_ms_ago,
+        "cache_updated_ms_ago": cache_updated_ms_ago,
+        "doa_file_exists": doa_file_exists,
+        "settings_file_exists": settings_file_exists
+    }
+
+
 @app.get('/cache')
 def cache():
     app.logger.debug(f'Responding with cache (args={request.args}). Current size: {len(app.cache)}')
@@ -172,6 +210,9 @@ def cache():
 
 
 def create_app():
+    app.logger.info(f'Kraken settings file: {SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
+    app.logger.info(f'Kraken DOA file: {DOA_FILE}, exists: {_kraken_doa_file_exists()}')
+
     now = datetime.now()
     if not os.path.exists(BACKUP_DIR_NAME):
         os.makedirs(BACKUP_DIR_NAME)
