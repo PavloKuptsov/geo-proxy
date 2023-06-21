@@ -87,35 +87,36 @@ def update_cache():
 
         if not _kraken_doa_file_exists():
             app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
-        else:
-            app.logger.debug(f'Parsing {DOA_FILE}...')
-            with open(DOA_FILE) as f:
-                read = f.read()
-                app.logger.debug(f'Data read: {read[0:200]} ...')
-                lines = read.split('\n')
-                app.logger.debug(f'{len(lines)} lines read')
+            return
 
-            for line in lines:
-                app.logger.debug(f'Processing a line str={line[0:100]}...')
-                if not line:
-                    app.logger.debug(f'Line is too short. Skipping...')
-                    continue
+        app.logger.debug(f'Parsing {DOA_FILE}...')
+        with open(DOA_FILE) as f:
+            read = f.read()
+            app.logger.debug(f'Data read: {read[0:200]} ...')
+            lines = read.split('\n')
+            app.logger.debug(f'{len(lines)} lines read')
 
-                ll = line.split(', ')
-                if len(ll) < 9:
-                    app.logger.debug(f'DOA is of the wrong format: {ll}')
-                    continue
+        for line in lines:
+            app.logger.debug(f'Processing a line str={line[0:100]}...')
+            if not line:
+                app.logger.debug(f'Line is too short. Skipping...')
+                continue
 
-                data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
-                app.arrangement = ll[5]
-                app.latitude = float(ll[8])
-                app.longitude = float(ll[9])
-                if data[0] > time_threshold:
-                    app.logger.debug(f'Adding a line {line[0:30]} to cache')
-                    app.cache.add(data)
-                    app.cache_last_updated_at = int(time.time() * 1000)
-                else:
-                    app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
+            ll = line.split(', ')
+            if len(ll) < 9:
+                app.logger.debug(f'DOA is of the wrong format: {ll}')
+                continue
+
+            data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
+            app.arrangement = ll[5]
+            app.latitude = float(ll[8])
+            app.longitude = float(ll[9])
+            if data[0] > time_threshold:
+                app.logger.debug(f'Adding a line {line[0:30]} to cache')
+                app.cache.add(data)
+                app.cache_last_updated_at = int(time.time() * 1000)
+            else:
+                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
