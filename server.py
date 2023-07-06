@@ -18,13 +18,27 @@ DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
+TIME = 0
+DOA_ANGLE = 1
+CONFIDENCE = 2
+RSSI = 3
+FREQUENCY_HZ = 4
+ARRAY_ARRANGEMENT = 5
+STATION_ID = 7
+LATITUDE = 8
+LONGITUDE = 9
+GPS_HEADING = 10
+COMPASS_HEADING = 11
+HEADING_SENSOR = 12
 
 
-def _to_int(value: str):
-    try:
-        return int(value)
-    except ValueError:
-        return int(float(value))
+class CacheRecord:
+    def __init__(self, time: int, doa: float, confidence: float, rssi: float, frequency_hz: int):
+        self.time = time
+        self.doa = doa
+        self.confidence = confidence
+        self.rssi = rssi
+        self.frequency_hz = frequency_hz
 
 
 def _is_valid_frequency(frequency_hz: int) -> bool:
@@ -42,6 +56,16 @@ def _update_kraken_config(data: dict):
 
     with open(SETTINGS_FILE, 'w') as file:
         file.write(json.dumps(settings, indent=2))
+
+
+def _get_kraken_config_value(key: str) -> str:
+    with open(SETTINGS_FILE) as file:
+        settings = json.loads(file.read())
+    return settings[key]
+
+
+def _set_kraken_config_value(key: str, value: str):
+    _update_kraken_config({key: value})
 
 
 def _doa_last_updated_at() -> int:
@@ -67,12 +91,13 @@ if __name__ != '__main__':
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
-app.cache = set()
+app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
 app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
 app.alias = None
+app.heading = 0.0
 CORS(app)
 
 
@@ -83,7 +108,7 @@ def update_cache():
         now = int(time.time() * 1000)
         time_threshold = now - DOA_TIME_THRESHOLD_MS
         app.logger.debug(f'now = {now}, time_threshold = {time_threshold}')
-        app.cache = set([item for item in app.cache if item[0] >= time_threshold])
+        app.cache = set([item for item in app.cache if item.time >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
         if not _kraken_doa_file_exists():
@@ -108,19 +133,26 @@ def update_cache():
                 app.logger.debug(f'DOA is of the wrong format: {ll}')
                 continue
 
-            data = (now, _to_int(ll[1]), float(ll[2]), float(ll[3]), _to_int(ll[4]))
-            app.arrangement = ll[5]
-            app.latitude = float(ll[8])
-            app.longitude = float(ll[9])
-            if ll[7] != 'NOCALL':
-                app.alias = ll[7]
+            gps_heading = float(ll[GPS_HEADING])
+            compass_heading = float(ll[COMPASS_HEADING])
+            app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
+            data = CacheRecord(time=now,
+                               doa=float(ll[DOA_ANGLE]),
+                               confidence=float(ll[CONFIDENCE]),
+                               rssi=float(ll[RSSI]),
+                               frequency_hz=int(ll[FREQUENCY_HZ]))
+            app.arrangement = ll[ARRAY_ARRANGEMENT]
+            app.latitude = float(ll[LATITUDE])
+            app.longitude = float(ll[LONGITUDE])
+            if ll[STATION_ID] != 'NOCALL':
+                app.alias = ll[STATION_ID]
 
-            if data[0] > time_threshold:
+            if data.time > time_threshold:
                 app.logger.debug(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
                 app.cache_last_updated_at = int(time.time() * 1000)
             else:
-                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data[0]}, delta = {time_threshold-data[0]}). Skipping...')
+                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.time}, delta = {time_threshold-data.time}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
@@ -191,27 +223,29 @@ def cache():
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     newer_than = request.args.get('newer_than')
-    result = sorted(list(app.cache), key=lambda x: x[0], reverse=True)
+    result = sorted(list(app.cache), key=lambda x: x.time, reverse=True)
     latest = result[0] if result else None
 
     if confidence:
-        result = [item for item in result if item[2] >= float(confidence)]
+        result = [record for record in result if record.confidence >= float(confidence)]
 
     if rssi:
-        result = [item for item in result if item[3] >= float(rssi)]
+        result = [record for record in result if record.rssi >= float(rssi)]
 
     if newer_than:
-        result = [item for item in result if item[0] >= int(newer_than)]
+        result = [record for record in result if record.time >= int(newer_than)]
 
     app.logger.debug(f'Filtered cache size: {len(app.cache)}')
 
+    data = [[record.time, record.doa, record.confidence, record.rssi, record.frequency_hz] for record in result]
     return jsonify({
         'lat': app.latitude,
         'lon': app.longitude,
         'arr': app.arrangement,
         'alias': app.alias,
-        'freq': latest[4] if latest else None,
-        'data': result
+        'freq': latest.frequency_hz if latest else None,
+        'heading': app.heading,
+        'data': data
     })
 
 
