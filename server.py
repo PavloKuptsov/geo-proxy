@@ -33,7 +33,7 @@ HEADING_SENSOR = 12
 
 
 class CacheRecord:
-    def __init__(self, time: int, doa: float, confidence: float, rssi: float, frequency_hz: float):
+    def __init__(self, time: int, doa: float, confidence: float, rssi: float, frequency_hz: int):
         self.time = time
         self.doa = doa
         self.confidence = confidence
