@@ -133,10 +133,9 @@ def update_cache():
                 app.logger.debug(f'DOA is of the wrong format: {ll}')
                 continue
 
-            gps_heading = ll[GPS_HEADING]
-            compass_heading = ll[COMPASS_HEADING]
-            is_gps_heading = ll[HEADING_SENSOR] == 'GPS'
-            app.heading = gps_heading if is_gps_heading else compass_heading
+            gps_heading = float(ll[GPS_HEADING])
+            compass_heading = float(ll[COMPASS_HEADING])
+            app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
             data = CacheRecord(time=now,
                                doa=float(ll[DOA_ANGLE]),
                                confidence=float(ll[CONFIDENCE]),
