@@ -228,11 +228,11 @@ def set_settings():
         if station_alias:
             config['station_id'] = str(station_alias).strip()[0:20]
 
-        angle = payload.get('angle', None)
-        if angle:
-            if not _is_valid_angle(float(angle)):
+        antenna_angle = payload.get('antenna_angle', None)
+        if antenna_angle:
+            if not _is_valid_angle(float(antenna_angle)):
                 return Response(None, status=400)
-            # config['array_offset'] = float(angle)
+            # config['array_offset'] = float(antenna_angle)
 
         _update_kraken_config(config)
         return Response(None, status=200)
