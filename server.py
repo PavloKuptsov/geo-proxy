@@ -15,7 +15,8 @@ DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = '/home/krakenrf/krakensdr_doa/krakensdr_doa'
 SETTINGS_FILE = f'/{DOA_PATH}/{SETTINGS_FILENAME}'
 DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
-WEB_UI_FILE = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
+WEB_UI_FILE_NEW = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
+WEB_UI_FILE_OLD = f'{DOA_PATH}/_UI/_web_interface/kraken_web_interface.py'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
@@ -88,12 +89,17 @@ def _kraken_settings_file_exists() -> bool:
     return os.path.exists(SETTINGS_FILE)
 
 
-def _get_kraken_version() -> str:
+def _get_kraken_version() -> str | None:
     version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
-    with open(WEB_UI_FILE) as f:
-        match = re.search(version_regex, f.read())
 
-    return match.groups()[0] if len(match.groups()) else None
+    ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
+    try:
+        with open(ui_file) as f:
+            match = re.search(version_regex, f.read())
+
+        return match.groups()[0] if len(match.groups()) else None
+    except FileNotFoundError:
+        return None
 
 
 def _now() -> int:
