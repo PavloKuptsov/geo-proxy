@@ -4,6 +4,7 @@ import re
 import shutil
 import time
 import traceback
+from dataclasses import dataclass
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -34,13 +35,13 @@ COMPASS_HEADING = 11
 HEADING_SENSOR = 12
 
 
+@dataclass(eq=True, frozen=True)
 class CacheRecord:
-    def __init__(self, timestamp: int, doa: float, confidence: float, rssi: float, frequency_hz: int):
-        self.timestamp = timestamp
-        self.doa = doa
-        self.confidence = confidence
-        self.rssi = rssi
-        self.frequency_hz = frequency_hz
+    timestamp: int
+    doa: float
+    confidence: float
+    rssi: float
+    frequency_hz: int
 
 
 def _is_valid_frequency(frequency_hz: int) -> bool:
