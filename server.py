@@ -34,8 +34,8 @@ HEADING_SENSOR = 12
 
 
 class CacheRecord:
-    def __init__(self, time: int, doa: float, confidence: float, rssi: float, frequency_hz: int):
-        self.time = time
+    def __init__(self, timestamp: int, doa: float, confidence: float, rssi: float, frequency_hz: int):
+        self.timestamp = timestamp
         self.doa = doa
         self.confidence = confidence
         self.rssi = rssi
@@ -46,6 +46,10 @@ def _is_valid_frequency(frequency_hz: int) -> bool:
     min_supported_freq_hz = 24 * 1000 * 1000
     max_supported_freq_hz = 1766 * 1000 * 1000
     return min_supported_freq_hz <= frequency_hz <= max_supported_freq_hz
+
+
+def _is_valid_angle(angle: float) -> bool:
+    return 0.0 <= angle <= 360.0
 
 
 def _update_kraken_config(data: dict):
@@ -123,7 +127,7 @@ def update_cache():
         app.logger.debug(f'Current app cache size: {len(app.cache)}')
         time_threshold = _now() - DOA_TIME_THRESHOLD_MS
         app.logger.debug(f'now = {_now()}, time_threshold = {time_threshold}')
-        app.cache = set([item for item in app.cache if item.time >= time_threshold])
+        app.cache = set([item for item in app.cache if item.timestamp >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
         if not _kraken_doa_file_exists():
@@ -151,7 +155,7 @@ def update_cache():
             gps_heading = float(ll[GPS_HEADING])
             compass_heading = float(ll[COMPASS_HEADING])
             app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
-            data = CacheRecord(time=version_specific_time(ll),
+            data = CacheRecord(timestamp=version_specific_time(ll),
                                doa=float(ll[DOA_ANGLE]),
                                confidence=float(ll[CONFIDENCE]),
                                rssi=float(ll[RSSI]),
@@ -162,12 +166,12 @@ def update_cache():
             if ll[STATION_ID] != 'NOCALL':
                 app.alias = ll[STATION_ID]
 
-            if data.time > time_threshold:
+            if data.timestamp > time_threshold:
                 app.logger.debug(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
                 app.cache_last_updated_at = _now()
             else:
-                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.time}, delta = {time_threshold-data.time}). Skipping...')
+                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.timestamp}, delta = {time_threshold - data.timestamp}). Skipping...')
     except:
         app.logger.error(traceback.format_exc())
 
@@ -209,6 +213,28 @@ def coordinates():
         return Response(None, status=400)
 
 
+@app.post('/settings')
+def set_settings():
+    try:
+        config = {}
+        payload = request.json
+        station_alias = payload.get('alias', None)
+        if station_alias:
+            config['station_id'] = str(station_alias).strip()[0:20]
+
+        angle = payload.get('angle', None)
+        if angle:
+            if not _is_valid_angle(float(angle)):
+                return Response(None, status=400)
+            # config['array_offset'] = float(angle)
+
+        _update_kraken_config(config)
+        return Response(None, status=200)
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=400)
+
+
 @app.get('/')
 def ping():
     return {"message": "ping"}
@@ -239,7 +265,7 @@ def cache():
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     newer_than = request.args.get('newer_than')
-    result = sorted(list(app.cache), key=lambda x: x.time, reverse=True)
+    result = sorted(list(app.cache), key=lambda x: x.timestamp, reverse=True)
     latest = result[0] if result else None
 
     if confidence:
@@ -249,11 +275,11 @@ def cache():
         result = [record for record in result if record.rssi >= float(rssi)]
 
     if newer_than:
-        result = [record for record in result if record.time >= int(newer_than)]
+        result = [record for record in result if record.timestamp >= int(newer_than)]
 
     app.logger.debug(f'Filtered cache size: {len(app.cache)}')
 
-    data = [[record.time, record.doa, record.confidence, record.rssi, record.frequency_hz] for record in result]
+    data = [[record.timestamp, record.doa, record.confidence, record.rssi, record.frequency_hz] for record in result]
     return jsonify({
         'lat': app.latitude,
         'lon': app.longitude,
