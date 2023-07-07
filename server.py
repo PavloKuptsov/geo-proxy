@@ -1,6 +1,6 @@
 import json
-import logging
 import os
+import re
 import shutil
 import time
 import traceback
@@ -15,6 +15,7 @@ DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = '/home/krakenrf/krakensdr_doa/krakensdr_doa'
 SETTINGS_FILE = f'/{DOA_PATH}/{SETTINGS_FILENAME}'
 DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
+WEB_UI_FILE = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
@@ -83,14 +84,22 @@ def _kraken_settings_file_exists() -> bool:
     return os.path.exists(SETTINGS_FILE)
 
 
+def _get_kraken_version() -> str:
+    version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+    with open(WEB_UI_FILE) as f:
+        match = re.search(version_regex, f.read())
+
+    return match.groups()[0] if len(match.groups()) else None
+
+
+def _now() -> int:
+    return int(time.time() * 1000)
+
+
 app = Flask(__name__)
 app.debug = True
-
-if __name__ != '__main__':
-    gunicorn_logger = logging.getLogger('gunicorn.info')
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
-
+app.kraken_version = _get_kraken_version()
+app.logger.setLevel('WARNING')
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
 app.latitude = 0
@@ -101,13 +110,19 @@ app.heading = 0.0
 CORS(app)
 
 
+def version_specific_time(ll: list) -> int:
+    if app.kraken_version == '1.6':
+        return _now()
+    else:
+        return int(ll[TIME])
+
+
 def update_cache():
     app.logger.debug(f'Updating app cache...')
     try:
         app.logger.debug(f'Current app cache size: {len(app.cache)}')
-        now = int(time.time() * 1000)
-        time_threshold = now - DOA_TIME_THRESHOLD_MS
-        app.logger.debug(f'now = {now}, time_threshold = {time_threshold}')
+        time_threshold = _now() - DOA_TIME_THRESHOLD_MS
+        app.logger.debug(f'now = {_now()}, time_threshold = {time_threshold}')
         app.cache = set([item for item in app.cache if item.time >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
@@ -136,7 +151,7 @@ def update_cache():
             gps_heading = float(ll[GPS_HEADING])
             compass_heading = float(ll[COMPASS_HEADING])
             app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
-            data = CacheRecord(time=now,
+            data = CacheRecord(time=version_specific_time(ll),
                                doa=float(ll[DOA_ANGLE]),
                                confidence=float(ll[CONFIDENCE]),
                                rssi=float(ll[RSSI]),
@@ -150,7 +165,7 @@ def update_cache():
             if data.time > time_threshold:
                 app.logger.debug(f'Adding a line {line[0:30]} to cache')
                 app.cache.add(data)
-                app.cache_last_updated_at = int(time.time() * 1000)
+                app.cache_last_updated_at = _now()
             else:
                 app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.time}, delta = {time_threshold-data.time}). Skipping...')
     except:
@@ -201,7 +216,7 @@ def ping():
 
 @app.get('/healthcheck')
 def healthcheck():
-    now = int(time.time() * 1000)
+    now = _now()
     doa_last_updated_at = _doa_last_updated_at()
     doa_updated_ms_ago = now - doa_last_updated_at if doa_last_updated_at > 0 else None
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
@@ -213,7 +228,8 @@ def healthcheck():
         "doa_updated_ms_ago": doa_updated_ms_ago,
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
-        "settings_file_exists": settings_file_exists
+        "settings_file_exists": settings_file_exists,
+        "kraken_version": app.kraken_version
     }
 
 
