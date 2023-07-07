@@ -89,7 +89,7 @@ def _kraken_settings_file_exists() -> bool:
     return os.path.exists(SETTINGS_FILE)
 
 
-def _get_kraken_version() -> str | None:
+def _get_kraken_version() -> str:
     version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
 
     ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
