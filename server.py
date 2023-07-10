@@ -98,7 +98,7 @@ def _get_kraken_version() -> str:
         with open(ui_file) as f:
             match = re.search(version_regex, f.read())
 
-        return match.groups()[0] if len(match.groups()) else None
+        return match.groups()[0] if match and len(match.groups()) else None
     except FileNotFoundError:
         return None
 
