@@ -1,5 +1,5 @@
 Werkzeug==2.0.2
 Flask==2.0.2
 flask-cors==3.0.10
-flask-compress==1.13
+flask-compress==1.4.0
 APScheduler==3.10.1
