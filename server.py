@@ -10,6 +10,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
+from flask_compress import Compress
 
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
@@ -118,6 +119,8 @@ app.longitude = 0
 app.arrangement = ''
 app.alias = None
 app.heading = 0.0
+compress = Compress()
+compress.init_app(app)
 CORS(app)
 
 
