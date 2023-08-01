@@ -313,6 +313,7 @@ def kraken_sdr_setup():
                 turn_kraken_on()
             else:
                 turn_kraken_off()
+        return {}
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
