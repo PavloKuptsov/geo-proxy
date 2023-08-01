@@ -12,6 +12,8 @@ from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 
+from src.system import turn_kraken_on, turn_kraken_off
+
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = '/home/krakenrf/krakensdr_doa/krakensdr_doa'
@@ -300,6 +302,20 @@ def cache():
         'data': data
     })
 
+
+@app.post('/sdr')
+def kraken_sdr_setup():
+    try:
+        payload = request.json
+        turn_power_on = payload.get('power_on', None)
+        if turn_power_on is not None:
+            if turn_power_on:
+                turn_kraken_on()
+            else:
+                turn_kraken_off()
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=400)
 
 def create_app():
     app.logger.info(f'Kraken settings file: {SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
