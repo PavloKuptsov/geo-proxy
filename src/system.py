@@ -19,7 +19,8 @@ def kraken_sdr_power_off():
     turn_kraken_sdr_relay_off()
     while is_kraken_sdr_connected():
         if time.time() - start > timeout:
-            raise Exception('Kraken SDR have not disconnected in time. Is the on/off relay connected correctly?')
+            raise Exception(f'Kraken SDR have not disconnected in time. Is the on/off relay connected correctly '
+                            f'(bcm pin {KRAKEN_POWER_RELAY_PIN_BCM})?')
         time.sleep(0.1)
 
 
@@ -79,5 +80,9 @@ def start_kraken_service():
 
 def stop_kraken_service():
     os.popen("sudo systemctl stop krakensdr.service")
+
+
+def system_reboot():
+    os.popen("sudo reboot now")
 
 

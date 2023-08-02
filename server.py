@@ -264,7 +264,7 @@ def healthcheck():
     kraken_sdr_connected = is_kraken_sdr_connected()
     status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists \
                 and kraken_service_running and kraken_sdr_connected
-    return {
+    return jsonify({
         "status_ok": status_ok,
         "doa_updated_ms_ago": doa_updated_ms_ago,
         "cache_updated_ms_ago": cache_updated_ms_ago,
@@ -273,7 +273,7 @@ def healthcheck():
         "kraken_version": app.kraken_version,
         "kraken_service_running": kraken_service_running,
         "kraken_sdr_connected": kraken_sdr_connected
-    }
+    })
 
 
 @app.get('/cache')
@@ -309,7 +309,7 @@ def cache():
 
 
 @app.post('/suspend')
-def kraken_sdr_setup():
+def suspend():
     try:
         payload = request.json
         turn_power_on = payload.get('power')
@@ -318,9 +318,15 @@ def kraken_sdr_setup():
         else:
             kraken_sdr_power_off()
         return healthcheck()
-    except Exception as err:
+    except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
+
+
+@app.post('/reboot')
+def reboot():
+    system_reboot()
+    return Response(status=200)
 
 def create_app():
     app.logger.info(f'Kraken settings file: {SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
