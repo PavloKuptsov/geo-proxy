@@ -262,7 +262,8 @@ def healthcheck():
     doa_file_exists = _kraken_doa_file_exists()
     kraken_service_running = is_kraken_service_running()
     kraken_sdr_connected = is_kraken_sdr_connected()
-    status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists
+    status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists \
+                and kraken_service_running and kraken_sdr_connected
     return {
         "status_ok": status_ok,
         "doa_updated_ms_ago": doa_updated_ms_ago,

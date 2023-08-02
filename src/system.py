@@ -19,7 +19,7 @@ def kraken_sdr_power_off():
     turn_kraken_sdr_relay_off()
     while is_kraken_sdr_connected():
         if time.time() - start > timeout:
-            raise Exception('Kraken SDR have not disconnected in time')
+            raise Exception('Kraken SDR have not disconnected in time. Is the on/off relay connected correctly?')
         time.sleep(0.1)
 
 
@@ -39,7 +39,6 @@ def kraken_sdr_power_on():
         time.sleep(0.1)
 
 
-
 def turn_kraken_sdr_relay_off():
     GPIO.cleanup()
     GPIO.setmode(GPIO.BCM)
@@ -55,18 +54,24 @@ def turn_kraken_sdr_relay_on():
 
 
 def is_kraken_sdr_connected() -> bool:
+    start = time.time()
     cmd_lines = os.popen("usb-devices")
     for line in cmd_lines:
         if re.match(r'^.+RTL2838.+$', line):
+            print(f'is_kraken_sdr_connected took {time.time() - start} seconds')
             return True
+    print(f'is_kraken_sdr_connected took {time.time() - start} seconds')
     return False
 
 
 def is_kraken_service_running() -> bool:
+    start = time.time()
     cmd_lines = os.popen("sudo systemctl status krakensdr.service")
     for line in cmd_lines:
         if re.match(r'^.+Active.+active.+running.+$', line):
+            print(f'is_kraken_service_running took {time.time() - start} seconds')
             return True
+    print(f'is_kraken_sdr_connected took {time.time() - start} seconds')
     return False
 
 
