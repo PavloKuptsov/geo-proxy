@@ -317,7 +317,7 @@ def kraken_sdr_setup():
                 kraken_sdr_power_on()
             else:
                 kraken_sdr_power_off()
-        return {}
+        return healthcheck()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
