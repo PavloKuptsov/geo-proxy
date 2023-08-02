@@ -308,18 +308,17 @@ def cache():
     })
 
 
-@app.post('/sdr')
+@app.post('/suspend')
 def kraken_sdr_setup():
     try:
         payload = request.json
-        turn_power_on = payload.get('power', None)
-        if turn_power_on is not None:
-            if turn_power_on:
-                kraken_sdr_power_on()
-            else:
-                kraken_sdr_power_off()
+        turn_power_on = payload.get('power')
+        if turn_power_on:
+            kraken_sdr_power_on()
+        else:
+            kraken_sdr_power_off()
         return healthcheck()
-    except:
+    except Exception as err:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
 
