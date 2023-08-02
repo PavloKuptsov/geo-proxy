@@ -55,7 +55,7 @@ def turn_kraken_sdr_relay_on():
 
 def is_kraken_sdr_connected() -> bool:
     start = time.time()
-    cmd_lines = os.popen("usb-devices")
+    cmd_lines = os.popen("lsusb")
     for line in cmd_lines:
         if re.match(r'^.+RTL2838.+$', line):
             print(f'is_kraken_sdr_connected took {time.time() - start} seconds')
@@ -67,10 +67,14 @@ def is_kraken_sdr_connected() -> bool:
 def is_kraken_service_running() -> bool:
     start = time.time()
     cmd_lines = os.popen("sudo systemctl status krakensdr.service")
+    r_active = r'^.+Active.+active.+running.+$'
+    r_dead = r'^.+Active.+inactive.+dead.+$'
     for line in cmd_lines:
-        if re.match(r'^.+Active.+active.+running.+$', line):
+        if re.match(r_active, line):
             print(f'is_kraken_service_running took {time.time() - start} seconds')
             return True
+        if re.match(r_dead, line):
+            return False
     print(f'is_kraken_sdr_connected took {time.time() - start} seconds')
     return False
 
