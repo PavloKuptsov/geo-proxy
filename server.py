@@ -12,7 +12,7 @@ from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 
-from src.system import turn_kraken_on, turn_kraken_off
+from src.system import *
 
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
@@ -260,6 +260,8 @@ def healthcheck():
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
     settings_file_exists = _kraken_settings_file_exists()
     doa_file_exists = _kraken_doa_file_exists()
+    kraken_service_running = is_kraken_service_running()
+    kraken_sdr_connected = is_kraken_sdr_connected()
     status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists
     return {
         "status_ok": status_ok,
@@ -267,7 +269,9 @@ def healthcheck():
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
         "settings_file_exists": settings_file_exists,
-        "kraken_version": app.kraken_version
+        "kraken_version": app.kraken_version,
+        "kraken_service_running": kraken_service_running,
+        "kraken_sdr_connected": kraken_sdr_connected
     }
 
 
@@ -307,12 +311,12 @@ def cache():
 def kraken_sdr_setup():
     try:
         payload = request.json
-        turn_power_on = payload.get('power_on', None)
+        turn_power_on = payload.get('power', None)
         if turn_power_on is not None:
             if turn_power_on:
-                turn_kraken_on()
+                kraken_sdr_power_on()
             else:
-                turn_kraken_off()
+                kraken_sdr_power_off()
         return {}
     except:
         app.logger.error(traceback.format_exc())
