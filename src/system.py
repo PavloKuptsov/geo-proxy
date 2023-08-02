@@ -15,6 +15,7 @@ def kraken_sdr_power_off():
         if time.time() - start > timeout:
             raise Exception('Kraken service have not stopped in time')
         time.sleep(0.1)
+    time.sleep(0.2)
     start = time.time()
     turn_kraken_sdr_relay_off()
     while is_kraken_sdr_connected():
@@ -32,6 +33,7 @@ def kraken_sdr_power_on():
         if time.time() - start > timeout:
             raise Exception('Kraken SDR have not connected in time')
         time.sleep(0.1)
+    time.sleep(0.2)
     start = time.time()
     start_kraken_service()
     while not is_kraken_service_running():
@@ -63,14 +65,10 @@ def is_kraken_sdr_connected() -> bool:
 
 
 def is_kraken_service_running() -> bool:
-    cmd_lines = os.popen("sudo systemctl status krakensdr.service")
-    r_active = r'^.+Active.+active.+running.+$'
-    r_dead = r'^.+Active.+inactive.+dead.+$'
+    cmd_lines = os.popen("sudo systemctl is-active krakensdr.service")
     for line in cmd_lines:
-        if re.match(r_active, line):
+        if line.strip() == 'active':
             return True
-        if re.match(r_dead, line):
-            return False
     return False
 
 
