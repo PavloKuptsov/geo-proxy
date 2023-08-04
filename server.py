@@ -1,6 +1,4 @@
 import json
-import os
-import re
 import shutil
 import time
 import traceback
@@ -260,19 +258,22 @@ def healthcheck():
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
     settings_file_exists = _kraken_settings_file_exists()
     doa_file_exists = _kraken_doa_file_exists()
+    doa_ok = doa_updated_ms_ago < 1000 and doa_file_exists if doa_updated_ms_ago else False
     kraken_service_running = is_kraken_service_running()
     kraken_sdr_connected = is_kraken_sdr_connected()
-    status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists \
-                and kraken_service_running and kraken_sdr_connected
+    cpu_temperature = get_cpu_temperature()
+    status_ok = doa_file_exists and doa_ok and settings_file_exists and kraken_service_running and kraken_sdr_connected
     return jsonify({
         "status_ok": status_ok,
+        "doa_ok": doa_ok,
         "doa_updated_ms_ago": doa_updated_ms_ago,
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
         "settings_file_exists": settings_file_exists,
-        "kraken_version": app.kraken_version,
+        "kraken_sdr_version": app.kraken_version,
         "kraken_service_running": kraken_service_running,
-        "kraken_sdr_connected": kraken_sdr_connected
+        "kraken_sdr_connected": kraken_sdr_connected,
+        "cpu_temperature": cpu_temperature,
     })
 
 

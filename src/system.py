@@ -84,3 +84,12 @@ def system_reboot():
     os.popen("sudo reboot now")
 
 
+def get_cpu_temperature() -> float | None:
+    cmd_lines = os.popen("/sys/class/thermal/thermal_zone0/temp")
+    for line in cmd_lines:
+        if line.strip().isnumeric():
+            return float(line.strip()) / 1000
+    return None
+
+
+
