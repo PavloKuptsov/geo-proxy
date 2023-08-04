@@ -85,7 +85,7 @@ def system_reboot():
 
 
 def get_cpu_temperature():
-    cmd_lines = os.popen("/sys/class/thermal/thermal_zone0/temp")
+    cmd_lines = os.popen("cat /sys/class/thermal/thermal_zone0/temp")
     for line in cmd_lines:
         if line.strip().isnumeric():
             return float(line.strip()) / 1000

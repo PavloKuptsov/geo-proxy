@@ -119,6 +119,7 @@ app.longitude = 0
 app.arrangement = ''
 app.alias = None
 app.heading = 0.0
+app.kraken_suspended = False
 compress = Compress()
 compress.init_app(app)
 CORS(app)
@@ -270,9 +271,10 @@ def healthcheck():
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
         "settings_file_exists": settings_file_exists,
-        "kraken_sdr_version": app.kraken_version,
+        "kraken_service_version": app.kraken_version,
         "kraken_service_running": kraken_service_running,
         "kraken_sdr_connected": kraken_sdr_connected,
+        "kraken_suspended": app.kraken_suspended,
         "cpu_temperature": cpu_temperature,
     })
 
@@ -316,8 +318,10 @@ def suspend():
         turn_power_on = payload.get('power')
         if turn_power_on:
             kraken_sdr_power_on()
+            app.kraken_suspended = False
         else:
             kraken_sdr_power_off()
+            app.kraken_suspended = True
         return healthcheck()
     except:
         app.logger.error(traceback.format_exc())
