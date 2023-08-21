@@ -167,8 +167,8 @@ def update_cache():
             app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
             data = CacheRecord(timestamp=version_specific_time(ll),
                                doa=float(ll[DOA_ANGLE]),
-                               confidence=float(ll[CONFIDENCE]),
-                               rssi=float(ll[RSSI]),
+                               confidence=round(float(ll[CONFIDENCE]), 2),
+                               rssi=round(float(ll[RSSI]), 2),
                                frequency_hz=int(ll[FREQUENCY_HZ]))
             app.arrangement = ll[ARRAY_ARRANGEMENT]
             app.latitude = float(ll[LATITUDE])
