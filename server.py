@@ -12,6 +12,7 @@ from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 
+KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
@@ -92,12 +93,10 @@ def _kraken_settings_file_exists() -> bool:
 
 
 def _get_kraken_version() -> str:
-    KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
     if KRAKEN_VERSION != '':
         return KRAKEN_VERSION
     else:
         version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
-
         ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
         try:
             with open(ui_file) as f:
