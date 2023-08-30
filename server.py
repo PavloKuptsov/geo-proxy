@@ -14,9 +14,9 @@ from flask_compress import Compress
 
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
-DOA_PATH = '/home/krakenrf/krakensdr_doa/krakensdr_doa'
-SETTINGS_FILE = f'/{DOA_PATH}/{SETTINGS_FILENAME}'
-DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
+DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
+SETTINGS_FILE = f'{DOA_PATH}/_share/{SETTINGS_FILENAME}'
+DOA_FILE = f'{DOA_PATH}/_share/{DOA_FILENAME}'
 WEB_UI_FILE_NEW = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
 WEB_UI_FILE_OLD = f'{DOA_PATH}/_UI/_web_interface/kraken_web_interface.py'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
@@ -92,16 +92,20 @@ def _kraken_settings_file_exists() -> bool:
 
 
 def _get_kraken_version() -> str:
-    version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+    KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
+    if KRAKEN_VERSION != '':
+        return KRAKEN_VERSION
+    else:
+        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
 
-    ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
-    try:
-        with open(ui_file) as f:
-            match = re.search(version_regex, f.read())
+        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
+        try:
+            with open(ui_file) as f:
+                match = re.search(version_regex, f.read())
 
-        return match.groups()[0] if match and len(match.groups()) else None
-    except FileNotFoundError:
-        return None
+            return match.groups()[0] if match and len(match.groups()) else None
+        except FileNotFoundError:
+            return None
 
 
 def _now() -> int:
