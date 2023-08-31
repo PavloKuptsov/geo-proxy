@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  doa:
+    image: dubrsl/doa:latest
+    command: doa
+    restart: always
+    init: true
+    privileged: true
+    shm_size: 2g
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: host
+    healthcheck:
+      test: "curl -ILf http://127.0.0.1:8080/"
+      interval: 15s
+      timeout: 30s
+      start_period: 240s
+    volumes:
+      - doa_shared:/root/krakensdr/krakensdr_doa/_share
+
+  doa-webserver:
+    image: dubrsl/doa:latest
+    command: miniserve -i 0.0.0.0 -p 8081 -P -u -o /root/krakensdr/krakensdr_doa/_share
+    restart: always
+    init: true
+    depends_on:
+      "doa":
+        condition: service_healthy
+    ports:
+      - target: 8081
+        published: 8081
+        protocol: tcp
+        mode: host
+    volumes:
+      - doa_shared:/root/krakensdr/krakensdr_doa/_share
+
+  doa-middlware:
+    image: dubrsl/doa:latest
+    command: node _nodejs/index_prod.js
+    restart: always
+    init: true
+    depends_on:
+      "doa":
+        condition: service_healthy
+    ports:
+      - target: 8042
+        published: 8042
+        protocol: tcp
+        mode: host
+    volumes:
+      - doa_shared:/root/krakensdr/krakensdr_doa/_share
+
+  geo-proxy:
+    image: dubrsl/geo-proxy:latest
+    restart: always
+    init: true
+    ports:
+      - target: 8082
+        published: 8082
+        protocol: tcp
+        mode: host
+    depends_on:
+      "doa":
+        condition: service_healthy
+    environment:
+      DOA_PATH: /root/krakensdr/krakensdr_doa
+      KRAKEN_VERSION: '1.6'
+      DOA_READ_REGULARITY_MS: 500
+    volumes:
+      - doa_shared:/root/krakensdr/krakensdr_doa/_share
+
+volumes:
+  doa_shared:
+  data_control:
