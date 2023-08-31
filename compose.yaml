@@ -74,4 +74,3 @@ services:
 
 volumes:
   doa_shared:
-  data_control:
