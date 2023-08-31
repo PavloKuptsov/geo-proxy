@@ -16,8 +16,12 @@ KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
-SETTINGS_FILE = f'{DOA_PATH}/_share/{SETTINGS_FILENAME}'
-DOA_FILE = f'{DOA_PATH}/_share/{DOA_FILENAME}'
+if os.path.exists(f'{DOA_PATH}/_share'):
+    SETTINGS_FILE = f'{DOA_PATH}/_share/{SETTINGS_FILENAME}'
+    DOA_FILE = f'{DOA_PATH}/_share/{DOA_FILENAME}'
+else:
+    SETTINGS_FILE = f'{DOA_PATH}/{SETTINGS_FILENAME}'
+    DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
 WEB_UI_FILE_NEW = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
 WEB_UI_FILE_OLD = f'{DOA_PATH}/_UI/_web_interface/kraken_web_interface.py'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
