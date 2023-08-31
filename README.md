@@ -11,3 +11,11 @@ cd geo-proxy
 
 The server should start and be reachable on the 8082 port. The root, http://localhost:8082 should return
 `{"message": "ping"}`
+
+## Use in docker
+
+Copy file `compose.yaml` some folder. Then you can run:
+
+```
+docker compose up -d geo-proxy
+```
