@@ -225,6 +225,7 @@ def coordinates():
         lon = float(payload.get('lon'))
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
         _update_kraken_config(settings)
+        return Response(None, status=200)
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
