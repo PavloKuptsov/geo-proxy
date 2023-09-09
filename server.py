@@ -1,4 +1,6 @@
 import json
+import os
+import re
 import shutil
 import time
 import traceback
@@ -9,14 +11,18 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
-
 from src.system import *
 
+KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
-DOA_PATH = '/home/krakenrf/krakensdr_doa/krakensdr_doa'
-SETTINGS_FILE = f'/{DOA_PATH}/{SETTINGS_FILENAME}'
-DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
+DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
+if os.path.exists(f'{DOA_PATH}/_share'):
+    SETTINGS_FILE = f'{DOA_PATH}/_share/{SETTINGS_FILENAME}'
+    DOA_FILE = f'{DOA_PATH}/_share/{DOA_FILENAME}'
+else:
+    SETTINGS_FILE = f'{DOA_PATH}/{SETTINGS_FILENAME}'
+    DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
 WEB_UI_FILE_NEW = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
 WEB_UI_FILE_OLD = f'{DOA_PATH}/_UI/_web_interface/kraken_web_interface.py'
 BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
@@ -92,16 +98,18 @@ def _kraken_settings_file_exists() -> bool:
 
 
 def _get_kraken_version() -> str:
-    version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+    if KRAKEN_VERSION != '':
+        return KRAKEN_VERSION
+    else:
+        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
+        try:
+            with open(ui_file) as f:
+                match = re.search(version_regex, f.read())
 
-    ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
-    try:
-        with open(ui_file) as f:
-            match = re.search(version_regex, f.read())
-
-        return match.groups()[0] if match and len(match.groups()) else None
-    except FileNotFoundError:
-        return None
+            return match.groups()[0] if match and len(match.groups()) else None
+        except FileNotFoundError:
+            return None
 
 
 def _now() -> int:
@@ -167,8 +175,8 @@ def update_cache():
             app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
             data = CacheRecord(timestamp=version_specific_time(ll),
                                doa=float(ll[DOA_ANGLE]),
-                               confidence=float(ll[CONFIDENCE]),
-                               rssi=float(ll[RSSI]),
+                               confidence=round(float(ll[CONFIDENCE]), 2),
+                               rssi=round(float(ll[RSSI]), 2),
                                frequency_hz=int(ll[FREQUENCY_HZ]))
             app.arrangement = ll[ARRAY_ARRANGEMENT]
             app.latitude = float(ll[LATITUDE])
