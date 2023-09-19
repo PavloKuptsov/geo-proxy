@@ -6,8 +6,14 @@ services:
     command: doa
     restart: always
     init: true
-    privileged: true
-    shm_size: 2g
+    shm_size: 1g
+    cap_add:
+      - CAP_SYS_NICE
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    # environment:
+      # Experimental option. Uncomment if you want to interrupt of run the instance
+      # STOP_IF_RTL_TEST_FAILED: yes
     ports:
       - target: 8080
         published: 8080
@@ -15,11 +21,9 @@ services:
         mode: host
     healthcheck:
       test: "curl -ILf http://127.0.0.1:8080/"
-      interval: 15s
-      timeout: 30s
-      start_period: 240s
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
+      # - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
 
   doa-webserver:
     image: dubrsl/doa:latest
@@ -34,6 +38,8 @@ services:
         published: 8081
         protocol: tcp
         mode: host
+    healthcheck:
+      test: "curl -ILf http://127.0.0.1:8081/"
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
@@ -50,6 +56,8 @@ services:
         published: 8042
         protocol: tcp
         mode: host
+    healthcheck:
+      test: "curl -ILf http://127.0.0.1:8042/"
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
@@ -62,15 +70,26 @@ services:
         published: 8082
         protocol: tcp
         mode: host
+    healthcheck:
+      test: "curl -ILf http://127.0.0.1:8082/healthcheck"
     depends_on:
       "doa":
         condition: service_healthy
     environment:
       DOA_PATH: /root/krakensdr/krakensdr_doa
-      KRAKEN_VERSION: '1.6'
+      KRAKEN_VERSION: '1.7.0'
       DOA_READ_REGULARITY_MS: 500
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
+  autoheal:
+    restart: always
+    image: willfarrell/autoheal
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   doa_shared:
+  
