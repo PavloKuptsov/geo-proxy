@@ -23,7 +23,6 @@ services:
       test: "curl -ILf http://127.0.0.1:8080/"
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
-      # - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
 
   doa-webserver:
     image: dubrsl/doa:latest
