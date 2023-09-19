@@ -4,3 +4,4 @@ flask-cors==3.0.10
 flask-compress==1.4.0
 APScheduler==3.10.1
 RPi.GPIO==0.7.1
+packaging

@@ -12,7 +12,9 @@ from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 from src.system import *
+from packaging.version import parse as parse_version
 
+LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
@@ -119,7 +121,7 @@ def _now() -> int:
 app = Flask(__name__)
 app.debug = True
 app.kraken_version = _get_kraken_version()
-app.logger.setLevel('WARNING')
+app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
 app.latitude = 0
@@ -133,9 +135,12 @@ CORS(app)
 
 
 def version_specific_time(ll: list) -> int:
-    if app.kraken_version == '1.6':
+    if parse_version(app.kraken_version) >= parse_version('1.6'):
+        app.logger.debug(
+            f'Kraken version: {app.kraken_version}. Use _now function.')
         return _now()
     else:
+        app.logger.debug(f'Kraken version: {app.kraken_version}. Use TIME.')
         return int(ll[TIME])
 
 
@@ -173,19 +178,27 @@ def update_cache():
             gps_heading = float(ll[GPS_HEADING])
             compass_heading = float(ll[COMPASS_HEADING])
             app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
+            # Add hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
+            app.arrangement = ll[ARRAY_ARRANGEMENT]
+            app.logger.debug(f'Array type: {app.arrangement}')
+            if app.arrangement == 'UCA':
+                app.logger.debug(f'Set doa_angle=360-DOA_ANGLE')
+                doa_angle = 360-float(ll[DOA_ANGLE])
+            else:
+                app.logger.debug(f'Set doa_angle=DOA_ANGLE')
+                doa_angle = float(ll[DOA_ANGLE])
             data = CacheRecord(timestamp=version_specific_time(ll),
-                               doa=float(ll[DOA_ANGLE]),
+                               doa=doa_angle,
                                confidence=round(float(ll[CONFIDENCE]), 2),
                                rssi=round(float(ll[RSSI]), 2),
                                frequency_hz=int(ll[FREQUENCY_HZ]))
-            app.arrangement = ll[ARRAY_ARRANGEMENT]
             app.latitude = float(ll[LATITUDE])
             app.longitude = float(ll[LONGITUDE])
             if ll[STATION_ID] != 'NOCALL':
                 app.alias = ll[STATION_ID]
 
             if data.timestamp > time_threshold:
-                app.logger.debug(f'Adding a line {line[0:30]} to cache')
+                app.logger.debug(f'Adding a line {data} to cache')
                 app.cache.add(data)
                 app.cache_last_updated_at = _now()
             else:
@@ -226,6 +239,7 @@ def coordinates():
         lon = float(payload.get('lon'))
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
         _update_kraken_config(settings)
+        return Response(None, status=200)
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
