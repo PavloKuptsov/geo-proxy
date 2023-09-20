@@ -1,9 +1,40 @@
 #!/bin/bash
 
-sudo apt update
-sudo apt install python3-pip gunicorn
-sudo pip install --system -r requirements.txt
-sudo cp gunicorn.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl start gunicorn
-sudo systemctl enable gunicorn
+install_dependencies()
+{
+  echo "Installing dependencies"
+  apt update
+  apt install python3-pip
+  pip install --system -r requirements.txt
+}
+
+remove_old_service()
+{
+    echo "Checking for the old service"
+    if [ "$(systemctl is-active gunicorn)" = "active" ]; then
+      echo "Old service version found, removing"
+      systemctl stop gunicorn
+      systemctl disable gunicorn
+      rm /etc/systemd/system/gunicorn.service
+    fi
+}
+
+install_service()
+{
+    echo "Installing the service"
+    if [ "$(systemctl is-active sunflower)" = "inactive" ]; then
+      cp sunflower.service /etc/systemd/system/
+      systemctl daemon-reload
+      systemctl enable sunflower
+      systemctl start sunflower
+    fi
+}
+
+main()
+{
+  install_dependencies
+  remove_old_service
+  install_service
+}
+
+main "$@"

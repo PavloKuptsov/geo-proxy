@@ -1,5 +1,5 @@
 [Unit]
-Description=Gunicorn serving the Sunflower Proxy
+Description=Server for the Sunflower Proxy
 After=network.target
 
 [Service]
