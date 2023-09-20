@@ -11,10 +11,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
+from src.system import *
 from packaging.version import parse as parse_version
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
-KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
@@ -99,8 +99,9 @@ def _kraken_settings_file_exists() -> bool:
 
 
 def _get_kraken_version() -> str:
-    if KRAKEN_VERSION != '':
-        return KRAKEN_VERSION
+    env_version = os.getenv('KRAKEN_VERSION', None)
+    if env_version is not None:
+        return str(env_version)
     else:
         version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
         ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
@@ -278,15 +279,24 @@ def healthcheck():
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
     settings_file_exists = _kraken_settings_file_exists()
     doa_file_exists = _kraken_doa_file_exists()
-    status_ok = doa_file_exists and doa_updated_ms_ago < 1000 and settings_file_exists
-    return {
+    doa_ok = doa_updated_ms_ago < 1000 and doa_file_exists if doa_updated_ms_ago else False
+    kraken_service_running = is_kraken_service_running()
+    kraken_sdr_connected = is_kraken_sdr_connected()
+    cpu_temperature = get_cpu_temperature()
+    status_ok = doa_file_exists and doa_ok and settings_file_exists and kraken_service_running and kraken_sdr_connected
+    return jsonify({
         "status_ok": status_ok,
+        "doa_ok": doa_ok,
         "doa_updated_ms_ago": doa_updated_ms_ago,
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
         "settings_file_exists": settings_file_exists,
-        "kraken_version": app.kraken_version
-    }
+        "kraken_service_version": app.kraken_version,
+        "kraken_service_running": kraken_service_running,
+        "kraken_sdr_connected": kraken_sdr_connected,
+        "kraken_suspended": not (kraken_service_running and kraken_sdr_connected),
+        "cpu_temperature": cpu_temperature,
+    })
 
 
 @app.get('/cache')
@@ -320,6 +330,26 @@ def cache():
         'data': data
     })
 
+
+@app.post('/suspend')
+def suspend():
+    try:
+        payload = request.json
+        turn_power_on = payload.get('power_on')
+        if turn_power_on:
+            kraken_sdr_power_on()
+        else:
+            kraken_sdr_power_off()
+        return healthcheck()
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=400)
+
+
+@app.post('/reboot')
+def reboot():
+    system_reboot()
+    return Response(status=200)
 
 def create_app():
     app.logger.info(f'Kraken settings file: {SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
