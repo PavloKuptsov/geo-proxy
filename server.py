@@ -15,7 +15,6 @@ from src.system import *
 from packaging.version import parse as parse_version
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
-KRAKEN_VERSION = str(os.getenv('KRAKEN_VERSION'))
 SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
@@ -100,8 +99,9 @@ def _kraken_settings_file_exists() -> bool:
 
 
 def _get_kraken_version() -> str:
-    if KRAKEN_VERSION != '':
-        return KRAKEN_VERSION
+    env_version = os.getenv('KRAKEN_VERSION', None)
+    if env_version is not None:
+        return str(env_version)
     else:
         version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
         ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
