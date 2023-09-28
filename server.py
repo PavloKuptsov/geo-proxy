@@ -135,7 +135,7 @@ CORS(app)
 
 
 def version_specific_time(ll: list) -> int:
-    if parse_version(app.kraken_version) == parse_version('1.6'):
+    if app.kraken_version is not None and parse_version(app.kraken_version) == parse_version('1.6'):
         app.logger.debug(f'Kraken version: {app.kraken_version}. Use _now function.')
         return _now()
     else:
