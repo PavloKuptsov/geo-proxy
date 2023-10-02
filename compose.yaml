@@ -61,9 +61,13 @@ services:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
   geo-proxy:
-    image: dubrsl/geo-proxy:latest
+    image: dubrsl/geo-proxy:1.7.0
     restart: always
     init: true
+    cap_add:
+      - CAP_SYS_NICE
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
     ports:
       - target: 8082
         published: 8082
@@ -78,6 +82,10 @@ services:
       DOA_PATH: /root/krakensdr/krakensdr_doa
       KRAKEN_VERSION: '1.7.0'
       DOA_READ_REGULARITY_MS: 500
+      IS_KRAKEN_SERVICE_RUNNING_COMMAND: echo 'active'
+      START_KRAKEN_SERVICE_COMMAND: /bin/true
+      STOP_KRAKEN_SERVICE_COMMAND: /bin/true
+      REBOOT_COMMAND: /bin/true
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
