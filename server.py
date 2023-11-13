@@ -19,7 +19,7 @@ LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
 if not os.path.exists(SETTINGS_FILE):
-    open(SETTINGS_FILE, 'a').close()
+    update_config(SETTINGS_FILE, {})
 KRAKEN_SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH', '/home/krakenrf/krakensdr_doa/krakensdr_doa'))
