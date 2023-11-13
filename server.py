@@ -18,6 +18,8 @@ from packaging.version import parse as parse_version
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
+if not os.path.exists(SETTINGS_FILE):
+    open(SETTINGS_FILE, 'a').close()
 KRAKEN_SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
 DOA_PATH = str(os.getenv('DOA_PATH', '/home/krakenrf/krakensdr_doa/krakensdr_doa'))
@@ -348,8 +350,6 @@ def create_app():
 
     destination = os.path.join(BACKUP_DIR_NAME, f'/{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
-    if not os.path.exists(SETTINGS_FILE):
-        open(SETTINGS_FILE, 'a').close()
     return app
 
 
