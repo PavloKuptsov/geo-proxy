@@ -30,7 +30,7 @@ def update_config(path: str, data: dict):
 
 
 def read_config(path: str):
-    with open(path) as file:
+    with open(path, 'a') as file:
         settings = json.loads(file.read())
     return settings
 
