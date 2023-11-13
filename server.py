@@ -244,7 +244,7 @@ def set_settings():
         station_alias = payload.get('alias', None)
         if station_alias is not None:
             params['station_id'] = str(station_alias).strip()[0:20]
-        update_config(SETTINGS_FILE, params)
+        update_config(KRAKEN_SETTINGS_FILE, params)
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
