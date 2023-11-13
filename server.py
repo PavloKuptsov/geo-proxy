@@ -92,6 +92,12 @@ def _now() -> int:
     return int(time.time() * 1000)
 
 
+def get_config_value(path: str, key: str):
+    settings = read_config(path)
+    app.logger.error(settings)
+    return settings[key] if key in settings else None
+
+
 app = Flask(__name__)
 app.debug = True
 app.kraken_version = _get_kraken_version()
@@ -102,7 +108,7 @@ app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
 app.alias = None
-app.array_angle = float(get_config_value(SETTINGS_FILE, 'array_angle'))
+app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
 compress.init_app(app)
 CORS(app)

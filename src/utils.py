@@ -35,9 +35,7 @@ def read_config(path: str):
     return settings
 
 
-def get_config_value(path: str, key: str):
-    settings = read_config(path)
-    return settings[key] if key in settings else None
+
 
 
 def set_config_value(path: str, key: str, value):
