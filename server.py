@@ -94,8 +94,6 @@ def _now() -> int:
     return int(time.time() * 1000)
 
 
-
-
 app = Flask(__name__)
 app.debug = True
 app.kraken_version = _get_kraken_version()
@@ -203,7 +201,7 @@ def set_frequency():
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
         update_config(KRAKEN_SETTINGS_FILE, settings)
-        return Response(None, status=200)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
@@ -217,7 +215,7 @@ def set_coordinates():
         lon = float(payload.get('lon'))
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
         update_config(KRAKEN_SETTINGS_FILE, settings)
-        return Response(None, status=200)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
@@ -227,11 +225,12 @@ def set_coordinates():
 def set_array_angle():
     try:
         payload = request.json
-        array_angle = payload.get('angle', None)
+        array_angle = payload.get('array_angle', None)
         if array_angle is not None and not is_valid_angle(float(array_angle)):
             return Response(None, status=400)
         app.array_angle = round(float(array_angle), 3) if array_angle is not None else None
         set_config_value(SETTINGS_FILE, 'array_angle', app.array_angle)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=500)
@@ -245,12 +244,27 @@ def set_settings():
         station_alias = payload.get('alias', None)
         if station_alias is not None:
             params['station_id'] = str(station_alias).strip()[0:20]
-
         update_config(SETTINGS_FILE, params)
-        return Response(None, status=200)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
+
+
+@app.get('/settings')
+def get_settings():
+    kraken_config = read_config(KRAKEN_SETTINGS_FILE)
+    lat = kraken_config['latitude']
+    lon = kraken_config['longitude']
+    frequency_hz = int(kraken_config['center_freq'] * (10 ** 6))
+    alias = kraken_config['station_id']
+    return jsonify({
+        "array_angle": app.array_angle,
+        "lat": lat,
+        "lon": lon,
+        "frequency_hz": frequency_hz,
+        "alias": alias
+    })
 
 
 @app.get('/')
