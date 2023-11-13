@@ -19,7 +19,7 @@ def is_valid_angle(angle: float) -> bool:
 
 
 def update_config(path: str, data: dict):
-    with open(path) as file:
+    with open(path, 'a') as file:
         settings = json.loads(file.read())
 
     for key in data:
