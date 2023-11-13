@@ -348,6 +348,8 @@ def create_app():
 
     destination = os.path.join(BACKUP_DIR_NAME, f'/{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
+    if not os.path.exists(SETTINGS_FILE):
+        open(SETTINGS_FILE, 'a').close()
     return app
 
 
