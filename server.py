@@ -29,6 +29,8 @@ if os.path.exists(os.path.join(DOA_PATH, '_share')):
 else:
     KRAKEN_SETTINGS_FILE = os.path.join(DOA_PATH, KRAKEN_SETTINGS_FILENAME)
     DOA_FILE = os.path.join(DOA_PATH, '_android_web', DOA_FILENAME)
+if not os.path.exists(KRAKEN_SETTINGS_FILE):
+    raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
 WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '/_UI/_web_interface/kraken_web_config.py')
 WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '/_UI/_web_interface/kraken_web_interface.py')
 BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
@@ -92,10 +94,6 @@ def _now() -> int:
     return int(time.time() * 1000)
 
 
-def get_config_value(path: str, key: str):
-    settings = read_config(path)
-    app.logger.error(settings)
-    return settings[key] if key in settings else None
 
 
 app = Flask(__name__)

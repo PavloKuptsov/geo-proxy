@@ -1,4 +1,5 @@
 import json
+import os
 
 
 def normalize_angle(angle: float) -> float:
@@ -19,26 +20,30 @@ def is_valid_angle(angle: float) -> bool:
 
 
 def update_config(path: str, data: dict):
-    with open(path, 'a') as file:
-        settings = json.loads(file.read())
-
+    settings = {}
+    if os.path.exists(path):
+        with open(path) as file:
+            settings = json.loads(file.read())
     for key in data:
         settings[key] = data[key]
-
     with open(path, 'w') as file:
         file.write(json.dumps(settings, indent=2))
 
 
 def read_config(path: str):
-    with open(path, 'a') as file:
-        settings = json.loads(file.read())
+    settings = {}
+    if os.path.exists(path):
+        with open(path) as file:
+            settings = json.loads(file.read())
     return settings
-
-
-
 
 
 def set_config_value(path: str, key: str, value):
     update_config(path, {key: value})
+
+
+def get_config_value(path: str, key: str):
+    settings = read_config(path)
+    return settings[key] if key in settings else None
 
 
