@@ -31,8 +31,8 @@ else:
     DOA_FILE = os.path.join(DOA_PATH, '_android_web', DOA_FILENAME)
 if not os.path.exists(KRAKEN_SETTINGS_FILE):
     raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
-WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '/_UI/_web_interface/kraken_web_config.py')
-WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '/_UI/_web_interface/kraken_web_interface.py')
+WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
+WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
 BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
@@ -352,7 +352,7 @@ def create_app():
     scheduler.start()
     app.logger.info(f'Cache updater started {now.isoformat()}, running')
 
-    destination = os.path.join(BACKUP_DIR_NAME, f'/{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
+    destination = os.path.join(BACKUP_DIR_NAME, f'{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
     raise Exception('dest=' + destination + ' KRAKEN_SETTINGS_FILE=' + KRAKEN_SETTINGS_FILE + ' backup_dir=' + BACKUP_DIR_NAME)
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
     return app
