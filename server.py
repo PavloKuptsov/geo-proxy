@@ -351,9 +351,7 @@ def create_app():
     scheduler.add_job(func=update_cache, trigger='interval', seconds=DOA_READ_REGULARITY_MS / 1000.0)
     scheduler.start()
     app.logger.info(f'Cache updater started {now.isoformat()}, running')
-
     destination = os.path.join(BACKUP_DIR_NAME, f'{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
-    raise Exception('dest=' + destination + ' KRAKEN_SETTINGS_FILE=' + KRAKEN_SETTINGS_FILE + ' backup_dir=' + BACKUP_DIR_NAME)
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
     return app
 
