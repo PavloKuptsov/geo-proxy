@@ -353,7 +353,7 @@ def create_app():
     app.logger.info(f'Cache updater started {now.isoformat()}, running')
 
     destination = os.path.join(BACKUP_DIR_NAME, f'/{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
-    raise (destination, BACKUP_DIR_NAME)
+    raise Exception(destination + ' << ' + BACKUP_DIR_NAME)
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
     return app
 
