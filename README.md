@@ -34,9 +34,14 @@ echo 'blacklist dvb_usb_rtl28xxu' > /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.c
 ```
 echo 'kernel.sched_rt_runtime_us=-1' > /etc/sysctl.d/doa.conf
 ```
+ 
+ - Setup required sysfs using systemd:
+```
+echo 'w /sys/module/usbcore/parameters/usbfs_memory_mb    -    -    -     -     0' > /etc/tmpfiles.d/doa.conf
+```
 
- - Install and setup required sysfs:
-
+ - OR for systems without systemd you can use sysfsutils:
+ 
 ```
 apt install sysfsutils
 echo 'module/usbcore/parameters/usbfs_memory_mb=0' > /etc/sysfs.d/doa.conf
