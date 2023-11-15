@@ -12,21 +12,28 @@ from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 from src.system import *
+from src.utils import *
 from packaging.version import parse as parse_version
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
-SETTINGS_FILENAME = 'settings.json'
+SETTINGS_FILENAME = 'geo_settings.json'
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
+if not os.path.exists(SETTINGS_FILE):
+    update_config(SETTINGS_FILE, {})
+KRAKEN_SETTINGS_FILENAME = 'settings.json'
 DOA_FILENAME = 'DOA_value.html'
-DOA_PATH = str(os.getenv('DOA_PATH','/home/krakenrf/krakensdr_doa/krakensdr_doa'))
-if os.path.exists(f'{DOA_PATH}/_share'):
-    SETTINGS_FILE = f'{DOA_PATH}/_share/{SETTINGS_FILENAME}'
-    DOA_FILE = f'{DOA_PATH}/_share/{DOA_FILENAME}'
+DOA_PATH = str(os.getenv('DOA_PATH', '/home/krakenrf/krakensdr_doa/krakensdr_doa'))
+if os.path.exists(os.path.join(DOA_PATH, '_share')):
+    KRAKEN_SETTINGS_FILE = os.path.join(DOA_PATH, '_share', KRAKEN_SETTINGS_FILENAME)
+    DOA_FILE = os.path.join(DOA_PATH, '_share', DOA_FILENAME)
 else:
-    SETTINGS_FILE = f'{DOA_PATH}/{SETTINGS_FILENAME}'
-    DOA_FILE = f'{DOA_PATH}/_android_web/{DOA_FILENAME}'
-WEB_UI_FILE_NEW = f'{DOA_PATH}/_UI/_web_interface/kraken_web_config.py'
-WEB_UI_FILE_OLD = f'{DOA_PATH}/_UI/_web_interface/kraken_web_interface.py'
-BACKUP_DIR_NAME = f'{DOA_PATH}/settings_backups'
+    KRAKEN_SETTINGS_FILE = os.path.join(DOA_PATH, KRAKEN_SETTINGS_FILENAME)
+    DOA_FILE = os.path.join(DOA_PATH, '_android_web', DOA_FILENAME)
+if not os.path.exists(KRAKEN_SETTINGS_FILE):
+    raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
+WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
+WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
+BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
 TIME = 0
@@ -52,37 +59,6 @@ class CacheRecord:
     frequency_hz: int
 
 
-def _is_valid_frequency(frequency_hz: int) -> bool:
-    min_supported_freq_hz = 24 * 1000 * 1000
-    max_supported_freq_hz = 1766 * 1000 * 1000
-    return min_supported_freq_hz <= frequency_hz <= max_supported_freq_hz
-
-
-def _is_valid_angle(angle: float) -> bool:
-    return 0.0 <= angle <= 360.0
-
-
-def _update_kraken_config(data: dict):
-    with open(SETTINGS_FILE) as file:
-        settings = json.loads(file.read())
-
-    for key in data:
-        settings[key] = data[key]
-
-    with open(SETTINGS_FILE, 'w') as file:
-        file.write(json.dumps(settings, indent=2))
-
-
-def _get_kraken_config_value(key: str) -> str:
-    with open(SETTINGS_FILE) as file:
-        settings = json.loads(file.read())
-    return settings[key]
-
-
-def _set_kraken_config_value(key: str, value: str):
-    _update_kraken_config({key: value})
-
-
 def _doa_last_updated_at() -> int:
     try:
         return int(os.path.getmtime(DOA_FILE) * 1000)
@@ -95,7 +71,7 @@ def _kraken_doa_file_exists() -> bool:
 
 
 def _kraken_settings_file_exists() -> bool:
-    return os.path.exists(SETTINGS_FILE)
+    return os.path.exists(KRAKEN_SETTINGS_FILE)
 
 
 def _get_kraken_version() -> str:
@@ -128,7 +104,7 @@ app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
 app.alias = None
-app.heading = 0.0
+app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
 compress.init_app(app)
 CORS(app)
@@ -174,20 +150,21 @@ def update_cache():
                 app.logger.debug(f'DOA is of the wrong format: {ll}')
                 continue
 
-            gps_heading = float(ll[GPS_HEADING])
-            compass_heading = float(ll[COMPASS_HEADING])
-            app.heading = gps_heading if ll[HEADING_SENSOR] == 'GPS' else compass_heading
-            # Add hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
             app.arrangement = ll[ARRAY_ARRANGEMENT]
             app.logger.debug(f'Array type: {app.arrangement}')
+            # A hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
             if app.arrangement == 'UCA':
                 app.logger.debug(f'Set doa_angle=360-DOA_ANGLE')
                 doa_angle = 360-float(ll[DOA_ANGLE])
             else:
                 app.logger.debug(f'Set doa_angle=DOA_ANGLE')
                 doa_angle = float(ll[DOA_ANGLE])
+
+            if app.array_angle is not None:
+                app.logger.debug(f'Applying offset array_angle={app.array_angle} degrees...')
+                doa_angle = normalize_angle(doa_angle + app.array_angle)
             data = CacheRecord(timestamp=version_specific_time(ll),
-                               doa=doa_angle,
+                               doa=round(doa_angle, 3),
                                confidence=round(float(ll[CONFIDENCE]), 2),
                                rssi=round(float(ll[RSSI]), 2),
                                frequency_hz=int(ll[FREQUENCY_HZ]))
@@ -207,7 +184,7 @@ def update_cache():
 
 
 @app.post('/frequency')
-def frequency():
+def set_frequency():
     try:
         payload = request.json
         try:
@@ -215,55 +192,79 @@ def frequency():
         except (ValueError, TypeError):
             return Response(None, status=400)
 
-        if not _is_valid_frequency(frequency_hz):
+        if not is_valid_frequency(frequency_hz):
             return Response(None, status=400)
 
-        frequency_mhz = frequency_hz / 1000000.0
+        frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
         settings = dict()
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
             settings['vfo_freq_' + str(i)] = frequency_hz
-        _update_kraken_config(settings)
-        return Response(None, status=200)
+        update_config(KRAKEN_SETTINGS_FILE, settings)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
 
 
 @app.post('/coordinates')
-def coordinates():
+def set_coordinates():
     try:
         payload = request.json
         lat = float(payload.get('lat'))
         lon = float(payload.get('lon'))
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
-        _update_kraken_config(settings)
-        return Response(None, status=200)
+        update_config(KRAKEN_SETTINGS_FILE, settings)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
+
+
+@app.post('/array_angle')
+def set_array_angle():
+    try:
+        payload = request.json
+        array_angle = payload.get('array_angle', None)
+        if array_angle is not None and not is_valid_angle(float(array_angle)):
+            return Response(None, status=400)
+        app.array_angle = round(float(array_angle), 3) if array_angle is not None else None
+        set_config_value(SETTINGS_FILE, 'array_angle', app.array_angle)
+        return get_settings()
+    except:
+        app.logger.error(traceback.format_exc())
+        return Response(None, status=500)
 
 
 @app.post('/settings')
 def set_settings():
     try:
-        config = {}
+        params = {}
         payload = request.json
         station_alias = payload.get('alias', None)
-        if station_alias:
-            config['station_id'] = str(station_alias).strip()[0:20]
-
-        antenna_angle = payload.get('antenna_angle', None)
-        if antenna_angle:
-            if not _is_valid_angle(float(antenna_angle)):
-                return Response(None, status=400)
-            # config['array_offset'] = float(antenna_angle)
-
-        _update_kraken_config(config)
-        return Response(None, status=200)
+        if station_alias is not None:
+            params['station_id'] = str(station_alias).strip()[0:20]
+        update_config(KRAKEN_SETTINGS_FILE, params)
+        return get_settings()
     except:
         app.logger.error(traceback.format_exc())
         return Response(None, status=400)
+
+
+@app.get('/settings')
+def get_settings():
+    kraken_config = read_config(KRAKEN_SETTINGS_FILE)
+    lat = kraken_config['latitude']
+    lon = kraken_config['longitude']
+    frequency_hz = int(kraken_config['center_freq'] * (1000 * 1000))
+    alias = kraken_config['station_id']
+    return jsonify({
+        "array_angle": app.array_angle,
+        "lat": lat,
+        "lon": lon,
+        "frequency_hz": frequency_hz,
+        "alias": alias
+    })
 
 
 @app.get('/')
@@ -296,6 +297,7 @@ def healthcheck():
         "kraken_sdr_connected": kraken_sdr_connected,
         "kraken_suspended": not (kraken_service_running and kraken_sdr_connected),
         "cpu_temperature": cpu_temperature,
+        "array_angle": app.array_angle
     })
 
 
@@ -326,7 +328,7 @@ def cache():
         'arr': app.arrangement,
         'alias': app.alias,
         'freq': latest.frequency_hz if latest else None,
-        'heading': app.heading,
+        'array_angle': app.array_angle,
         'data': data
     })
 
@@ -351,8 +353,9 @@ def reboot():
     system_reboot()
     return Response(status=200)
 
+
 def create_app():
-    app.logger.info(f'Kraken settings file: {SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
+    app.logger.info(f'Kraken settings file: {KRAKEN_SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
     app.logger.info(f'Kraken DOA file: {DOA_FILE}, exists: {_kraken_doa_file_exists()}')
 
     now = datetime.now()
@@ -362,9 +365,8 @@ def create_app():
     scheduler.add_job(func=update_cache, trigger='interval', seconds=DOA_READ_REGULARITY_MS / 1000.0)
     scheduler.start()
     app.logger.info(f'Cache updater started {now.isoformat()}, running')
-
-    destination = f'{BACKUP_DIR_NAME}/{now.strftime("%Y%m%d-%H%M%S")}-{SETTINGS_FILENAME}.bak'
-    shutil.copyfile(SETTINGS_FILE, destination)
+    destination = os.path.join(BACKUP_DIR_NAME, f'{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
+    shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
     return app
 
 
