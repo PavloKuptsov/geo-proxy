@@ -195,7 +195,7 @@ def set_frequency():
         if not is_valid_frequency(frequency_hz):
             return Response(None, status=400)
 
-        frequency_mhz = frequency_hz / 1000000.0
+        frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
         settings = dict()
         settings['center_freq'] = frequency_mhz
         for i in range(0, 16):
@@ -256,7 +256,7 @@ def get_settings():
     kraken_config = read_config(KRAKEN_SETTINGS_FILE)
     lat = kraken_config['latitude']
     lon = kraken_config['longitude']
-    frequency_hz = int(kraken_config['center_freq'] * (10 ** 6))
+    frequency_hz = int(kraken_config['center_freq'] * (1000 * 1000))
     alias = kraken_config['station_id']
     return jsonify({
         "array_angle": app.array_angle,
