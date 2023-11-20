@@ -59,7 +59,7 @@ class CacheRecord:
     frequency_hz: int
 
 
-def _doa_last_updated_at() -> int:
+def _doa_last_updated_at_ms() -> int:
     try:
         return int(os.path.getmtime(DOA_FILE) * 1000)
     except OSError:
@@ -130,6 +130,10 @@ def update_cache():
 
         if not _kraken_doa_file_exists():
             app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
+            return
+
+        if app.cache_last_updated_at >= _doa_last_updated_at_ms():
+            app.logger.debug(f'File {DOA_FILE} has not changed. Skipping...')
             return
 
         app.logger.debug(f'Parsing {DOA_FILE}...')
@@ -275,7 +279,7 @@ def ping():
 @app.get('/healthcheck')
 def healthcheck():
     now = _now()
-    doa_last_updated_at = _doa_last_updated_at()
+    doa_last_updated_at = _doa_last_updated_at_ms()
     doa_updated_ms_ago = now - doa_last_updated_at if doa_last_updated_at > 0 else None
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
     settings_file_exists = _kraken_settings_file_exists()
