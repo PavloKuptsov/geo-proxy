@@ -11,6 +11,10 @@ import time
 KRAKEN_POWER_RELAY_PIN_BCM = 27
 
 
+def is_in_docker():
+    return not not os.environ.get('IS_IN_DOCKER', None)
+
+
 def kraken_sdr_power_off():
     timeout = 10
     start = time.time()
@@ -69,7 +73,7 @@ def is_kraken_sdr_connected() -> bool:
 
 
 def is_kraken_service_running() -> bool:
-    cmd_lines = os.popen(str(os.getenv('IS_KRAKEN_SERVICE_RUNNING_COMMAND', "sudo systemctl is-active krakensdr.service")))
+    cmd_lines = os.popen("sudo systemctl is-active krakensdr.service")
     for line in cmd_lines:
         if line.strip() == 'active':
             return True
@@ -77,15 +81,15 @@ def is_kraken_service_running() -> bool:
 
 
 def start_kraken_service():
-    os.popen(str(os.getenv('START_KRAKEN_SERVICE_COMMAND', "sudo systemctl start krakensdr.service")))
+    os.popen("sudo systemctl start krakensdr.service")
 
 
 def stop_kraken_service():
-    os.popen(str(os.getenv('STOP_KRAKEN_SERVICE_COMMAND', "sudo systemctl stop krakensdr.service")))
+    os.popen("sudo systemctl stop krakensdr.service")
 
 
 def system_reboot():
-    os.popen(str(os.getenv('REBOOT_COMMAND', "sudo reboot now")))
+    os.popen("sudo reboot now")
 
 
 def get_cpu_temperature():
