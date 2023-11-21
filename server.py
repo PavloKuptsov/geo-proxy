@@ -1,4 +1,5 @@
 import shutil
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -55,6 +56,15 @@ class CacheRecord:
     confidence: float
     rssi: float
     frequency_hz: int
+
+
+def _start_ws_client():
+    def __run_client():
+        ws = ClientSocket(WEB_UI_WS_URL)
+
+    thread = threading.Thread(target=__run_client, args=())
+    thread.daemon = True
+    thread.start()
 
 
 def _doa_last_updated_at_ms() -> int:
@@ -374,5 +384,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    ws = ClientSocket(WEB_UI_WS_URL)
+    _start_ws_client()
     app.run(host='0.0.0.0', port=8082)
