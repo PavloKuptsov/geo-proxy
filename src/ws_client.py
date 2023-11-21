@@ -1,6 +1,6 @@
 import websocket
 
-WEB_UI_WS_URL = 'ws://100.96.1.2:8080/_push'
+WEB_UI_WS_URL = 'ws://127.0.0.1:8080/_push'
 
 
 class ClientSocket:
