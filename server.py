@@ -1,5 +1,4 @@
 import shutil
-import threading
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -10,6 +9,8 @@ from flask_compress import Compress
 from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
+
+from src.ws_client import ClientSocket
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
@@ -54,17 +55,6 @@ class CacheRecord:
     confidence: float
     rssi: float
     frequency_hz: int
-
-
-def _start_ws_client():
-    def __run_client():
-        import websocket
-        ws = websocket.WebSocket()
-        ws.connect(WEB_UI_WS_URL)
-
-    thread = threading.Thread(target=__run_client, args=())
-    thread.daemon = True
-    thread.start()
 
 
 def _doa_last_updated_at_ms() -> int:
@@ -384,5 +374,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    _start_ws_client()
+    ws = ClientSocket(WEB_UI_WS_URL)
     app.run(host='0.0.0.0', port=8082)
