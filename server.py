@@ -1,5 +1,4 @@
 import shutil
-import threading
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -10,8 +9,6 @@ from flask_compress import Compress
 from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
-
-from src.ws_client import ClientSocket
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
@@ -31,7 +28,6 @@ if not os.path.exists(KRAKEN_SETTINGS_FILE):
     raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
 WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
 WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
-WEB_UI_WS_URL = 'ws://127.0.0.1:8080/_push'
 BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
@@ -56,15 +52,6 @@ class CacheRecord:
     confidence: float
     rssi: float
     frequency_hz: int
-
-
-def _start_ws_client():
-    def __run_client():
-        ws = ClientSocket(WEB_UI_WS_URL)
-
-    thread = threading.Thread(target=__run_client, args=())
-    thread.daemon = True
-    thread.start()
 
 
 def _doa_last_updated_at_ms() -> int:
@@ -384,5 +371,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    _start_ws_client()
     app.run(host='0.0.0.0', port=8082)

@@ -28,6 +28,12 @@ install_service()
       systemctl enable sunflower
       systemctl start sunflower
     fi
+    if [ "$(systemctl is-active sunflower_ws_client)" = "inactive" ]; then
+      cp sunflower_ws_client.service /etc/systemd/system/
+      systemctl daemon-reload
+      systemctl enable sunflower_ws_client
+      systemctl start sunflower_ws_client
+    fi
 }
 
 main()
