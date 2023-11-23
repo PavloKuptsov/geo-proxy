@@ -3,7 +3,7 @@
 install_dependencies()
 {
   echo "Installing dependencies"
-  apt update
+#  apt update
   apt install python3-pip
   pip install --system -r requirements.txt
 }
