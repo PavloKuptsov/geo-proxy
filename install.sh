@@ -11,7 +11,8 @@ install_dependencies()
 remove_old_service()
 {
     echo "Checking for the old service"
-    if [ "$(systemctl is-active gunicorn)" = "active" ]; then
+    if [ "$(systemctl is-active gunicorn)" = "active" ];
+    then
       echo "Old service version found, removing"
       systemctl stop gunicorn
       systemctl disable gunicorn
@@ -22,17 +23,14 @@ remove_old_service()
 install_service()
 {
     echo "Installing the service"
-    if [ "$(systemctl is-active sunflower)" = "inactive" ]; then
+    if [ "$(systemctl is-active sunflower)" = "inactive" ];
+    then
       cp sunflower.service /etc/systemd/system/
       systemctl daemon-reload
       systemctl enable sunflower
       systemctl start sunflower
-    fi
-    if [ "$(systemctl is-active sunflower_ws_client)" = "inactive" ]; then
-      cp sunflower_ws_client.service /etc/systemd/system/
-      systemctl daemon-reload
-      systemctl enable sunflower_ws_client
-      systemctl start sunflower_ws_client
+    else
+      systemctl restart sunflower
     fi
 }
 

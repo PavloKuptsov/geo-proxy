@@ -1,6 +1,6 @@
 try:
     import RPi.GPIO as GPIO
-except RuntimeError:
+except (RuntimeError, ModuleNotFoundError):
     GPIO = None
 
 import traceback

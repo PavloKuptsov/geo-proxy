@@ -6,6 +6,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
+
+from src import ws_client
 from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
@@ -371,4 +373,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
+    ws_client.run_in_thread()
     app.run(host='0.0.0.0', port=8082)
