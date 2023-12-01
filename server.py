@@ -56,6 +56,14 @@ class CacheRecord:
     frequency_hz: int
 
 
+class Error:
+    def __init__(self, message: str):
+        self.message = message
+
+    def to_json(self):
+        return json.dumps({'message': self.message})
+
+
 def _doa_last_updated_at_ms() -> int:
     try:
         return int(os.path.getmtime(DOA_FILE) * 1000)
@@ -191,10 +199,10 @@ def set_frequency():
         try:
             frequency_hz = int(payload.get('frequency_hz'))
         except (ValueError, TypeError):
-            return Response(None, status=400)
+            return Response(Error(f'Invalid frequency').to_json(), status=400)
 
         if not is_valid_frequency(frequency_hz):
-            return Response(None, status=400)
+            return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
         frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
         settings = dict()
@@ -205,7 +213,7 @@ def set_frequency():
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
-        return Response(None, status=400)
+        return Response(Error('Failed to set frequency').to_json(), status=400)
 
 
 @app.post('/coordinates')
@@ -219,7 +227,7 @@ def set_coordinates():
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
-        return Response(None, status=400)
+        return Response(Error('Failed to set coordinates').to_json(), status=400)
 
 
 @app.post('/array_angle')
@@ -228,13 +236,13 @@ def set_array_angle():
         payload = request.json
         array_angle = payload.get('array_angle', None)
         if array_angle is not None and not is_valid_angle(float(array_angle)):
-            return Response(None, status=400)
+            return Response(Error(f'"{array_angle}" is not a valid angle').to_json(), status=400)
         app.array_angle = round(float(array_angle), 3) if array_angle is not None else None
         set_config_value(SETTINGS_FILE, 'array_angle', app.array_angle)
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
-        return Response(None, status=500)
+        return Response(Error('Failed to set an antenna array angle').to_json(), status=500)
 
 
 @app.post('/settings')
@@ -249,7 +257,7 @@ def set_settings():
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
-        return Response(None, status=400)
+        return Response(Error('Failed to set a station settings').to_json(), status=400)
 
 
 @app.get('/settings')
@@ -276,19 +284,21 @@ def ping():
 @app.get('/healthcheck')
 def healthcheck():
     now = _now()
+    in_docker = is_in_docker()
     doa_last_updated_at = _doa_last_updated_at_ms()
     doa_updated_ms_ago = now - doa_last_updated_at if doa_last_updated_at > 0 else None
     cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
     settings_file_exists = _kraken_settings_file_exists()
     doa_file_exists = _kraken_doa_file_exists()
     doa_ok = doa_updated_ms_ago < 1000 and doa_file_exists if doa_updated_ms_ago else False
-    kraken_service_running = is_kraken_service_running()
-    kraken_sdr_connected = is_kraken_sdr_connected()
-    cpu_temperature = get_cpu_temperature()
-    status_ok = doa_file_exists and doa_ok and settings_file_exists and kraken_service_running and kraken_sdr_connected
+    kraken_service_running = is_kraken_service_running() if not in_docker else None
+    kraken_sdr_connected = is_kraken_sdr_connected() if not in_docker else None
+    cpu_temperature = get_cpu_temperature() if not in_docker else None
+    status_ok = doa_file_exists and doa_ok and settings_file_exists and (in_docker or (kraken_service_running and kraken_sdr_connected))
     return jsonify({
         "status_ok": status_ok,
         "doa_ok": doa_ok,
+        "in_docker": in_docker,
         "doa_updated_ms_ago": doa_updated_ms_ago,
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
@@ -296,7 +306,7 @@ def healthcheck():
         "kraken_service_version": app.kraken_version,
         "kraken_service_running": kraken_service_running,
         "kraken_sdr_connected": kraken_sdr_connected,
-        "kraken_suspended": not (kraken_service_running and kraken_sdr_connected),
+        "kraken_suspended": not (kraken_service_running and kraken_sdr_connected) if not in_docker else None,
         "cpu_temperature": cpu_temperature,
         "array_angle": app.array_angle
     })
@@ -336,6 +346,8 @@ def cache():
 
 @app.post('/suspend')
 def suspend():
+    if is_in_docker():
+        return Response(Error('Cant suspend in Docker').to_json(), status=400)
     try:
         payload = request.json
         turn_power_on = payload.get('power_on')
@@ -351,6 +363,8 @@ def suspend():
 
 @app.post('/reboot')
 def reboot():
+    if is_in_docker():
+        return Response(Error('Cant reboot in Docker').to_json(), status=400)
     system_reboot()
     return Response(status=200)
 

@@ -79,13 +79,10 @@ services:
       "doa":
         condition: service_healthy
     environment:
+      IS_IN_DOCKER: true
       DOA_PATH: /root/krakensdr/krakensdr_doa
       KRAKEN_VERSION: '1.7.0'
       DOA_READ_REGULARITY_MS: 500
-      IS_KRAKEN_SERVICE_RUNNING_COMMAND: echo 'active'
-      START_KRAKEN_SERVICE_COMMAND: /bin/true
-      STOP_KRAKEN_SERVICE_COMMAND: /bin/true
-      REBOOT_COMMAND: /bin/true
     volumes:
       - doa_shared:/root/krakensdr/krakensdr_doa/_share
 
