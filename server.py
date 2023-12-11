@@ -12,6 +12,8 @@ from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
 
+PROXY_VERSION = '2023.12.12'
+
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
@@ -308,7 +310,8 @@ def healthcheck():
         "kraken_sdr_connected": kraken_sdr_connected,
         "kraken_suspended": not (kraken_service_running and kraken_sdr_connected) if not in_docker else None,
         "cpu_temperature": cpu_temperature,
-        "array_angle": app.array_angle
+        "array_angle": app.array_angle,
+        "proxy_version": PROXY_VERSION
     })
 
 
