@@ -105,6 +105,7 @@ app.kraken_version = _get_kraken_version()
 app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
+app.curr_frequency_hz: int = 0
 app.latitude = 0
 app.longitude = 0
 app.arrangement = ''
@@ -172,13 +173,15 @@ def update_cache():
             if app.array_angle is not None:
                 app.logger.debug(f'Applying offset array_angle={app.array_angle} degrees...')
                 doa_angle = normalize_angle(doa_angle + app.array_angle)
+            frequency_hz = int(ll[FREQUENCY_HZ])
             data = CacheRecord(timestamp=version_specific_time(ll),
                                doa=round(doa_angle, 3),
                                confidence=round(float(ll[CONFIDENCE]), 2),
                                rssi=round(float(ll[RSSI]), 2),
-                               frequency_hz=int(ll[FREQUENCY_HZ]))
+                               frequency_hz=frequency_hz)
             app.latitude = float(ll[LATITUDE])
             app.longitude = float(ll[LONGITUDE])
+            app.curr_frequency_hz = frequency_hz
             if ll[STATION_ID] != 'NOCALL':
                 app.alias = ll[STATION_ID]
 
@@ -205,11 +208,13 @@ def set_frequency():
             return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
         frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
-        settings = dict()
-        settings['center_freq'] = frequency_mhz
-        for i in range(0, 16):
-            settings['vfo_freq_' + str(i)] = frequency_hz
-        update_config(KRAKEN_SETTINGS_FILE, settings)
+        kraken_config = read_config(KRAKEN_SETTINGS_FILE)
+        if frequency_hz != app.curr_frequency_hz or abs(float(kraken_config['center_freq']) - frequency_mhz) > 0.00001:
+            settings = dict()
+            settings['center_freq'] = frequency_mhz
+            for i in range(0, 16):
+                settings['vfo_freq_' + str(i)] = frequency_hz
+            update_config(KRAKEN_SETTINGS_FILE, settings)
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
@@ -222,12 +227,15 @@ def set_coordinates():
         payload = request.json
         lat = float(payload.get('lat'))
         lon = float(payload.get('lon'))
+    except:
+        return Response(Error('Invalid coordinates').to_json(), status=400)
+    try:
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
         update_config(KRAKEN_SETTINGS_FILE, settings)
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
-        return Response(Error('Failed to set coordinates').to_json(), status=400)
+        return Response(Error('Failed to set coordinates').to_json(), status=500)
 
 
 @app.post('/array_angle')
