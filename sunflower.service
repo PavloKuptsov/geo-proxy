@@ -3,8 +3,8 @@ Description=Server for the Sunflower Proxy
 After=network.target
 
 [Service]
-User=krakenrf
-Group=krakenrf
+User=root
+Group=root
 WorkingDirectory=/home/krakenrf/geo-proxy
 ExecStart=python3 server.py
 
