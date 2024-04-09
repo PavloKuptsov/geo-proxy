@@ -12,7 +12,7 @@ from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
 
-PROXY_VERSION = '2024.01.23'
+PROXY_VERSION = '2024.04.09'
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
