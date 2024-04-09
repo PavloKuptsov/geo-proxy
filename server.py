@@ -294,7 +294,7 @@ def healthcheck():
     kraken_service_running = is_kraken_service_running() if not in_docker else None
     kraken_sdr_connected = is_kraken_sdr_connected() if not in_docker else None
     cpu_temperature = get_cpu_temperature() if not in_docker else None
-    status_ok = doa_file_exists and doa_ok and settings_file_exists and (in_docker or (kraken_service_running and kraken_sdr_connected))
+    status_ok = doa_file_exists and settings_file_exists and (in_docker or (kraken_service_running and kraken_sdr_connected))
     return jsonify({
         "status_ok": status_ok,
         "doa_ok": doa_ok,
