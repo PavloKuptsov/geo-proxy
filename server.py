@@ -89,7 +89,7 @@ def _get_kraken_version() -> str:
     if env_version is not None:
         return str(env_version)
     else:
-        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+        version_regex = re.compile(r'Version (.*)\"')
         for path in MAYBE_UI_FILES:
             ui_file = os.path.join(DOA_PATH, path)
             app.logger.info(ui_file)
