@@ -30,8 +30,11 @@ else:
     DOA_FILE = os.path.join(DOA_PATH, '_android_web', DOA_FILENAME)
 if not os.path.exists(KRAKEN_SETTINGS_FILE):
     raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
-WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
-WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
+MAYBE_UI_FILES = [
+    '_UI/_web_interface/kraken_web_config.py',
+    '_UI/_web_interface/kraken_web_interface.py',
+    '_UI/_web_interface/views/__pycache__/system_control_card.cpython-39.pyc'
+]
 BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
@@ -87,14 +90,14 @@ def _get_kraken_version() -> str:
         return str(env_version)
     else:
         version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
-        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
-        try:
-            with open(ui_file) as f:
-                match = re.search(version_regex, f.read())
+        for path in MAYBE_UI_FILES:
+            ui_file = os.path.join(DOA_PATH, path)
+            if os.path.exists(ui_file):
+                with open(ui_file) as f:
+                    match = re.search(version_regex, f.read())
 
-            return match.groups()[0] if match and len(match.groups()) else None
-        except FileNotFoundError:
-            return None
+                return match.groups()[0] if match and len(match.groups()) else None
+        return None
 
 
 def _now() -> int:
