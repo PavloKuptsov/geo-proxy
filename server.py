@@ -92,11 +92,12 @@ def _get_kraken_version() -> str:
         version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
         for path in MAYBE_UI_FILES:
             ui_file = os.path.join(DOA_PATH, path)
+            app.logger.info(ui_file)
             if os.path.exists(ui_file):
                 with open(ui_file) as f:
                     match = re.search(version_regex, f.read())
-
-                return match.groups()[0] if match and len(match.groups()) else None
+                    app.logger.info(match.groups())
+                    return match.groups()[0] if match and len(match.groups()) else None
         return None
 
 
