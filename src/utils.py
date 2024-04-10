@@ -56,6 +56,6 @@ def get_cached_config_value(path: str, key: str, ttl_ms = 1000):
 
     result = get_config_value(path, key)
     config_cache[(path, key)] = [result, now]
-    return
+    return result
 
 
