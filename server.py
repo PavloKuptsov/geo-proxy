@@ -344,8 +344,8 @@ def cache():
     longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
 
     return jsonify({
-        'lat': latitude,
-        'lon': longitude,
+        'lat': latitude if latitude is not None else 0,
+        'lon': longitude if longitude is not None else 0,
         'arr': app.arrangement,
         'alias': station_alias if station_alias != NOCALL else None,
         'freq': latest.frequency_hz if latest else None,
