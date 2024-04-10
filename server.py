@@ -47,6 +47,7 @@ LONGITUDE = 9
 GPS_HEADING = 10
 COMPASS_HEADING = 11
 HEADING_SENSOR = 12
+NOCALL = 'NOCALL'
 
 
 @dataclass(eq=True, frozen=True)
@@ -108,10 +109,7 @@ app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
 app.curr_frequency_hz: int = 0
-app.latitude = 0
-app.longitude = 0
 app.arrangement = ''
-app.alias = None
 app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
 compress.init_app(app)
@@ -181,11 +179,7 @@ def update_cache():
                                confidence=round(float(ll[CONFIDENCE]), 2),
                                rssi=round(float(ll[RSSI]), 2),
                                frequency_hz=frequency_hz)
-            app.latitude = float(ll[LATITUDE])
-            app.longitude = float(ll[LONGITUDE])
             app.curr_frequency_hz = frequency_hz
-            if ll[STATION_ID] != 'NOCALL':
-                app.alias = ll[STATION_ID]
 
             if data.timestamp > time_threshold:
                 app.logger.debug(f'Adding a line {data} to cache')
@@ -276,7 +270,7 @@ def get_settings():
     lat = kraken_config['latitude']
     lon = kraken_config['longitude']
     frequency_hz = int(kraken_config['center_freq'] * (1000 * 1000))
-    alias = kraken_config['station_id']
+    alias = kraken_config['station_id'] if kraken_config['station_id'] != NOCALL else None
     return jsonify({
         "array_angle": app.array_angle,
         "lat": lat,
@@ -344,11 +338,16 @@ def cache():
     app.logger.debug(f'Filtered cache size: {len(app.cache)}')
 
     data = [[record.timestamp, record.doa, record.confidence, record.rssi, record.frequency_hz] for record in result]
+
+    station_alias = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'station_id')
+    latitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'latitude')
+    longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
+
     return jsonify({
-        'lat': app.latitude,
-        'lon': app.longitude,
+        'lat': latitude,
+        'lon': longitude,
         'arr': app.arrangement,
-        'alias': app.alias,
+        'alias': station_alias if station_alias != NOCALL else None,
         'freq': latest.frequency_hz if latest else None,
         'array_angle': app.array_angle,
         'data': data
