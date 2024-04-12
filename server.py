@@ -57,6 +57,7 @@ class CacheRecord:
     confidence: float
     rssi: float
     frequency_hz: int
+    ant_arrangement: str
 
 
 class Error:
@@ -80,6 +81,11 @@ def _kraken_doa_file_exists() -> bool:
 
 def _kraken_settings_file_exists() -> bool:
     return os.path.exists(KRAKEN_SETTINGS_FILE)
+
+
+def _get_cached_frequency_from_kraken_config() -> int:
+    frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
+    return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
 
 
 def _get_kraken_version() -> str:
@@ -108,8 +114,6 @@ app.kraken_version = _get_kraken_version()
 app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
-app.curr_frequency_hz: int = 0
-app.arrangement = ''
 app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
 compress.init_app(app)
@@ -160,10 +164,10 @@ def update_cache():
                 app.logger.debug(f'DOA is of the wrong format: {ll}')
                 continue
 
-            app.arrangement = ll[ARRAY_ARRANGEMENT]
-            app.logger.debug(f'Array type: {app.arrangement}')
+            ant_arrangement = ll[ARRAY_ARRANGEMENT]
+            app.logger.debug(f'Antenna array type: {ant_arrangement}')
             # A hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
-            if app.arrangement == 'UCA':
+            if ant_arrangement == 'UCA':
                 app.logger.debug(f'Set doa_angle=360-DOA_ANGLE')
                 doa_angle = 360-float(ll[DOA_ANGLE])
             else:
@@ -178,8 +182,8 @@ def update_cache():
                                doa=round(doa_angle, 3),
                                confidence=round(float(ll[CONFIDENCE]), 2),
                                rssi=round(float(ll[RSSI]), 2),
-                               frequency_hz=frequency_hz)
-            app.curr_frequency_hz = frequency_hz
+                               frequency_hz=frequency_hz,
+                               ant_arrangement=ll[ARRAY_ARRANGEMENT])
 
             if data.timestamp > time_threshold:
                 app.logger.debug(f'Adding a line {data} to cache')
@@ -342,13 +346,19 @@ def cache():
     station_alias = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'station_id')
     latitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'latitude')
     longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
+    curr_frequency = latest.frequency_hz if latest else None
+    if not curr_frequency:
+        curr_frequency = _get_cached_frequency_from_kraken_config()
+    curr_ant_arrangement = latest.ant_arrangement if latest else None
+    if not curr_ant_arrangement:
+        curr_ant_arrangement = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement')
 
     return jsonify({
         'lat': latitude if latitude is not None else 0,
         'lon': longitude if longitude is not None else 0,
-        'arr': app.arrangement,
+        'arr': curr_ant_arrangement,
         'alias': station_alias if station_alias != NOCALL else None,
-        'freq': latest.frequency_hz if latest else None,
+        'freq': curr_frequency,
         'array_angle': app.array_angle,
         'data': data
     })

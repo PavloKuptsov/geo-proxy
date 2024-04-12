@@ -48,6 +48,7 @@ def get_config_value(path: str, key: str):
     settings = read_config(path)
     return settings[key] if key in settings else None
 
+
 def get_cached_config_value(path: str, key: str, ttl_ms = 1000):
     value, set_at = 0, 1
     now = int(time.time() * 1000)
