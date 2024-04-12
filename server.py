@@ -86,6 +86,7 @@ def _get_frequency_from_kraken_config() -> int:
     frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
     return int(frequency_mhz * 1000 * 1000) if frequency_mhz else None
 
+
 def _get_kraken_version() -> str:
     env_version = os.getenv('KRAKEN_VERSION', None)
     if env_version is not None:
