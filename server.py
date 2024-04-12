@@ -147,8 +147,8 @@ def update_cache():
                            doa=round(random.uniform(110, 120), 1),
                            confidence=round(0.5 + 7.5 * signal_strength, 2),  # 0.5 - 8,
                            rssi=-80 + round(60 * signal_strength),
-                           frequency_hz=None,
-                           ant_arrangement=None)
+                           frequency_hz=_get_cached_frequency_from_kraken_config(),
+                           ant_arrangement=get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement'))
 
         app.cache.add(data)
         app.cache_last_updated_at = _now()
