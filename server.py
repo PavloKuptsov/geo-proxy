@@ -83,9 +83,9 @@ def _kraken_settings_file_exists() -> bool:
     return os.path.exists(KRAKEN_SETTINGS_FILE)
 
 
-def _get_frequency_from_kraken_config() -> int:
+def _get_cached_frequency_from_kraken_config() -> int:
     frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
-    return int(frequency_mhz * 1000 * 1000) if frequency_mhz else None
+    return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
 
 
 def _get_kraken_version() -> str:
@@ -347,7 +347,7 @@ def cache():
     longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
     curr_frequency = latest.frequency_hz if latest else None
     if not curr_frequency:
-        curr_frequency = _get_frequency_from_kraken_config()
+        curr_frequency = _get_cached_frequency_from_kraken_config()
     curr_ant_arrangement = latest.ant_arrangement if latest else None
     if not curr_ant_arrangement:
         curr_ant_arrangement = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement')
