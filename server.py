@@ -82,6 +82,10 @@ def _kraken_settings_file_exists() -> bool:
     return os.path.exists(KRAKEN_SETTINGS_FILE)
 
 
+def _get_frequency_from_kraken_config() -> int:
+    frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
+    return int(frequency_mhz * 1000 * 1000) if frequency_mhz else None
+
 def _get_kraken_version() -> str:
     env_version = os.getenv('KRAKEN_VERSION', None)
     if env_version is not None:
@@ -108,7 +112,7 @@ app.kraken_version = _get_kraken_version()
 app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
-app.curr_frequency_hz: int = 0
+app.curr_frequency_hz: int = _get_frequency_from_kraken_config()
 app.arrangement = ''
 app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
@@ -342,13 +346,16 @@ def cache():
     station_alias = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'station_id')
     latitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'latitude')
     longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
+    curr_frequency = latest.frequency_hz if latest else None
+    if not curr_frequency:
+        curr_frequency = _get_frequency_from_kraken_config()
 
     return jsonify({
         'lat': latitude if latitude is not None else 0,
         'lon': longitude if longitude is not None else 0,
         'arr': app.arrangement,
         'alias': station_alias if station_alias != NOCALL else None,
-        'freq': latest.frequency_hz if latest else None,
+        'freq': curr_frequency,
         'array_angle': app.array_angle,
         'data': data
     })
