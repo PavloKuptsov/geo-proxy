@@ -2,6 +2,8 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 
+import random
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
@@ -138,59 +140,18 @@ def update_cache():
         app.cache = set([item for item in app.cache if item.timestamp >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
-        if not _kraken_doa_file_exists():
-            app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
-            return
 
-        if app.cache_last_updated_at >= _doa_last_updated_at_ms():
-            app.logger.debug(f'File {DOA_FILE} has not changed. Skipping...')
-            return
+        signal_strength = random.uniform(0.01, 1)
 
-        app.logger.debug(f'Parsing {DOA_FILE}...')
-        with open(DOA_FILE) as f:
-            read = f.read()
-            app.logger.debug(f'Data read: {read[0:200]} ...')
-            lines = read.split('\n')
-            app.logger.debug(f'{len(lines)} lines read')
+        data = CacheRecord(timestamp=_now() - random.randint(100, 150),
+                           doa=round(random.uniform(110, 120), 1),
+                           confidence=round(0.5 + 7.5 * signal_strength, 2),  # 0.5 - 8,
+                           rssi=-80 + round(60 * signal_strength),
+                           frequency_hz=None,
+                           ant_arrangement=None)
 
-        for line in lines:
-            app.logger.debug(f'Processing a line str={line[0:100]}...')
-            if not line:
-                app.logger.debug(f'Line is too short. Skipping...')
-                continue
-
-            ll = line.split(', ')
-            if len(ll) < 9:
-                app.logger.debug(f'DOA is of the wrong format: {ll}')
-                continue
-
-            ant_arrangement = ll[ARRAY_ARRANGEMENT]
-            app.logger.debug(f'Antenna array type: {ant_arrangement}')
-            # A hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
-            if ant_arrangement == 'UCA':
-                app.logger.debug(f'Set doa_angle=360-DOA_ANGLE')
-                doa_angle = 360-float(ll[DOA_ANGLE])
-            else:
-                app.logger.debug(f'Set doa_angle=DOA_ANGLE')
-                doa_angle = float(ll[DOA_ANGLE])
-
-            if app.array_angle is not None:
-                app.logger.debug(f'Applying offset array_angle={app.array_angle} degrees...')
-                doa_angle = normalize_angle(doa_angle + app.array_angle)
-            frequency_hz = int(ll[FREQUENCY_HZ])
-            data = CacheRecord(timestamp=version_specific_time(ll),
-                               doa=round(doa_angle, 3),
-                               confidence=round(float(ll[CONFIDENCE]), 2),
-                               rssi=round(float(ll[RSSI]), 2),
-                               frequency_hz=frequency_hz,
-                               ant_arrangement=ll[ARRAY_ARRANGEMENT])
-
-            if data.timestamp > time_threshold:
-                app.logger.debug(f'Adding a line {data} to cache')
-                app.cache.add(data)
-                app.cache_last_updated_at = _now()
-            else:
-                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.timestamp}, delta = {time_threshold - data.timestamp}). Skipping...')
+        app.cache.add(data)
+        app.cache_last_updated_at = _now()
     except:
         app.logger.error(traceback.format_exc())
 
