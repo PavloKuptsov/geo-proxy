@@ -12,7 +12,7 @@ from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
 
-PROXY_VERSION = '2024.04.09'
+PROXY_VERSION = '2024.04.12'
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
@@ -208,8 +208,7 @@ def set_frequency():
             return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
         frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
-        kraken_config = read_config(KRAKEN_SETTINGS_FILE)
-        if frequency_hz != app.curr_frequency_hz or abs(float(kraken_config['center_freq']) - frequency_mhz) > 0.00001:
+        if frequency_hz != _get_cached_frequency_from_kraken_config():
             settings = dict()
             settings['center_freq'] = frequency_mhz
             for i in range(0, 16):

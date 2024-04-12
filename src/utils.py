@@ -4,6 +4,7 @@ import time
 
 config_cache = dict()
 
+
 def normalize_angle(angle: float) -> float:
     value = angle % 360
     if value < 0:
@@ -49,7 +50,7 @@ def get_config_value(path: str, key: str):
     return settings[key] if key in settings else None
 
 
-def get_cached_config_value(path: str, key: str, ttl_ms = 1000):
+def get_cached_config_value(path: str, key: str, ttl_ms=1000):
     value, set_at = 0, 1
     now = int(time.time() * 1000)
     if (path, key) in config_cache and abs(now - config_cache[(path, key)][set_at]) < ttl_ms:
@@ -58,5 +59,4 @@ def get_cached_config_value(path: str, key: str, ttl_ms = 1000):
     result = get_config_value(path, key)
     config_cache[(path, key)] = [result, now]
     return result
-
 
