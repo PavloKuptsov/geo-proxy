@@ -6,7 +6,7 @@ After=network.target
 User=root
 Group=root
 WorkingDirectory=/home/krakenrf/geo-proxy
-ExecStart=python3 server.py
+ExecStart=/home/krakenrf/geo-proxy/venv/bin/python3 server.py
 
 [Install]
 WantedBy=multi-user.target

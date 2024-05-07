@@ -6,6 +6,7 @@ install_dependencies()
   apt install python3-pip
   echo "[-    ] Creating virtualenv"
   python3 -m virtualenv venv
+  chmod -R 777 venv
   echo "[+    ] Virtualenv created"
   echo "[+-   ] Installing python packages"
   venv/bin/pip install -r requirements.txt
@@ -25,10 +26,10 @@ remove_old_service()
 install_service()
 {
   echo "[+++- ] Installing the service"
+  cp -rf sunflower.service /etc/systemd/system/
+  systemctl daemon-reload
   if [ "$(systemctl is-active sunflower)" = "inactive" ];
   then
-    cp sunflower.service /etc/systemd/system/
-    systemctl daemon-reload
     systemctl enable sunflower
     systemctl start sunflower
     echo "[++++ ] Service installed successfully"
