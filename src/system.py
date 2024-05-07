@@ -3,7 +3,6 @@ try:
 except (RuntimeError, ModuleNotFoundError):
     GPIO = None
 
-import traceback
 import os
 import re
 import time
@@ -12,7 +11,7 @@ KRAKEN_POWER_RELAY_PIN_BCM = 27
 
 
 def is_in_docker():
-    return not not os.environ.get('IS_IN_DOCKER', None)
+    return os.environ.get('IS_IN_DOCKER', None)
 
 
 def kraken_sdr_power_off():
@@ -98,6 +97,3 @@ def get_cpu_temperature():
         if line.strip().isnumeric():
             return round(float(line.strip()) / 1000, 1)
     return None
-
-
-

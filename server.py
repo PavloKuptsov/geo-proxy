@@ -1,4 +1,5 @@
 import shutil
+import traceback
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -8,46 +9,22 @@ from flask_cors import CORS
 from flask_compress import Compress
 
 from src import ws_client
+from src.config import (LOG_LEVEL, SETTINGS_FILE, TIME, DOA_TIME_THRESHOLD_MS, ARRAY_ARRANGEMENT, DOA_ANGLE,
+                        FREQUENCY_HZ, CONFIDENCE, RSSI, NOCALL, PROXY_VERSION, BACKUP_DIR_NAME, DOA_READ_REGULARITY_MS,
+                        KRAKEN_SETTINGS_FILENAME)
 from src.system import *
 from src.utils import *
 from packaging.version import parse as parse_version
 
-PROXY_VERSION = '2024.04.12'
+from src.utils import get_kraken_version, kraken_doa_file_exists, doa_last_updated_at_ms, \
+    get_cached_frequency_from_kraken_config, kraken_settings_file_exists, now
 
-LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
-SETTINGS_FILENAME = 'geo_settings.json'
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
 if not os.path.exists(SETTINGS_FILE):
     update_config(SETTINGS_FILE, {})
-KRAKEN_SETTINGS_FILENAME = 'settings.json'
-DOA_FILENAME = 'DOA_value.html'
-DOA_PATH = str(os.getenv('DOA_PATH', '/home/krakenrf/krakensdr_doa/krakensdr_doa'))
-if os.path.exists(os.path.join(DOA_PATH, '_share')):
-    KRAKEN_SETTINGS_FILE = os.path.join(DOA_PATH, '_share', KRAKEN_SETTINGS_FILENAME)
-    DOA_FILE = os.path.join(DOA_PATH, '_share', DOA_FILENAME)
-else:
-    KRAKEN_SETTINGS_FILE = os.path.join(DOA_PATH, KRAKEN_SETTINGS_FILENAME)
-    DOA_FILE = os.path.join(DOA_PATH, '_android_web', DOA_FILENAME)
+
+
 if not os.path.exists(KRAKEN_SETTINGS_FILE):
     raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
-WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
-WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
-BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
-DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
-DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))
-TIME = 0
-DOA_ANGLE = 1
-CONFIDENCE = 2
-RSSI = 3
-FREQUENCY_HZ = 4
-ARRAY_ARRANGEMENT = 5
-STATION_ID = 7
-LATITUDE = 8
-LONGITUDE = 9
-GPS_HEADING = 10
-COMPASS_HEADING = 11
-HEADING_SENSOR = 12
-NOCALL = 'NOCALL'
 
 
 @dataclass(eq=True, frozen=True)
@@ -68,49 +45,9 @@ class Error:
         return json.dumps({'message': self.message})
 
 
-def _doa_last_updated_at_ms() -> int:
-    try:
-        return int(os.path.getmtime(DOA_FILE) * 1000)
-    except OSError:
-        return 0
-
-
-def _kraken_doa_file_exists() -> bool:
-    return os.path.exists(DOA_FILE)
-
-
-def _kraken_settings_file_exists() -> bool:
-    return os.path.exists(KRAKEN_SETTINGS_FILE)
-
-
-def _get_cached_frequency_from_kraken_config() -> int:
-    frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
-    return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
-
-
-def _get_kraken_version() -> str:
-    env_version = os.getenv('KRAKEN_VERSION', None)
-    if env_version is not None:
-        return str(env_version)
-    else:
-        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
-        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
-        try:
-            with open(ui_file) as f:
-                match = re.search(version_regex, f.read())
-
-            return match.groups()[0] if match and len(match.groups()) else None
-        except FileNotFoundError:
-            return None
-
-
-def _now() -> int:
-    return int(time.time() * 1000)
-
-
 app = Flask(__name__)
 app.debug = True
-app.kraken_version = _get_kraken_version()
+app.kraken_version = get_kraken_version()
 app.logger.setLevel(LOG_LEVEL)
 app.cache: set[CacheRecord] = set()
 app.cache_last_updated_at = 0
@@ -123,26 +60,26 @@ CORS(app)
 def version_specific_time(ll: list) -> int:
     if app.kraken_version is not None and parse_version(app.kraken_version) == parse_version('1.6'):
         app.logger.debug(f'Kraken version: {app.kraken_version}. Use _now function.')
-        return _now()
+        return now()
     else:
         app.logger.debug(f'Kraken version: {app.kraken_version}. Use TIME.')
         return int(ll[TIME])
 
 
 def update_cache():
-    app.logger.debug(f'Updating app cache...')
+    app.logger.debug('Updating app cache...')
     try:
         app.logger.debug(f'Current app cache size: {len(app.cache)}')
-        time_threshold = _now() - DOA_TIME_THRESHOLD_MS
-        app.logger.debug(f'now = {_now()}, time_threshold = {time_threshold}')
+        time_threshold = now() - DOA_TIME_THRESHOLD_MS
+        app.logger.debug(f'now = {now()}, time_threshold = {time_threshold}')
         app.cache = set([item for item in app.cache if item.timestamp >= time_threshold])
         app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
 
-        if not _kraken_doa_file_exists():
+        if not kraken_doa_file_exists():
             app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
             return
 
-        if app.cache_last_updated_at >= _doa_last_updated_at_ms():
+        if app.cache_last_updated_at >= doa_last_updated_at_ms():
             app.logger.debug(f'File {DOA_FILE} has not changed. Skipping...')
             return
 
@@ -156,7 +93,7 @@ def update_cache():
         for line in lines:
             app.logger.debug(f'Processing a line str={line[0:100]}...')
             if not line:
-                app.logger.debug(f'Line is too short. Skipping...')
+                app.logger.debug('Line is too short. Skipping...')
                 continue
 
             ll = line.split(', ')
@@ -168,10 +105,10 @@ def update_cache():
             app.logger.debug(f'Antenna array type: {ant_arrangement}')
             # A hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
             if ant_arrangement == 'UCA':
-                app.logger.debug(f'Set doa_angle=360-DOA_ANGLE')
+                app.logger.debug('Set doa_angle=360-DOA_ANGLE')
                 doa_angle = 360-float(ll[DOA_ANGLE])
             else:
-                app.logger.debug(f'Set doa_angle=DOA_ANGLE')
+                app.logger.debug('Set doa_angle=DOA_ANGLE')
                 doa_angle = float(ll[DOA_ANGLE])
 
             if app.array_angle is not None:
@@ -188,7 +125,7 @@ def update_cache():
             if data.timestamp > time_threshold:
                 app.logger.debug(f'Adding a line {data} to cache')
                 app.cache.add(data)
-                app.cache_last_updated_at = _now()
+                app.cache_last_updated_at = now()
             else:
                 app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.timestamp}, delta = {time_threshold - data.timestamp}). Skipping...')
     except:
@@ -202,13 +139,13 @@ def set_frequency():
         try:
             frequency_hz = int(payload.get('frequency_hz'))
         except (ValueError, TypeError):
-            return Response(Error(f'Invalid frequency').to_json(), status=400)
+            return Response(Error('Invalid frequency').to_json(), status=400)
 
         if not is_valid_frequency(frequency_hz):
             return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
         frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
-        if frequency_hz != _get_cached_frequency_from_kraken_config():
+        if frequency_hz != get_cached_frequency_from_kraken_config():
             settings = dict()
             settings['center_freq'] = frequency_mhz
             for i in range(0, 16):
@@ -226,7 +163,7 @@ def set_coordinates():
         payload = request.json
         lat = float(payload.get('lat'))
         lon = float(payload.get('lon'))
-    except:
+    except (TypeError, ValueError):
         return Response(Error('Invalid coordinates').to_json(), status=400)
     try:
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
@@ -290,13 +227,13 @@ def ping():
 
 @app.get('/healthcheck')
 def healthcheck():
-    now = _now()
+    now_ = now()
     in_docker = is_in_docker()
-    doa_last_updated_at = _doa_last_updated_at_ms()
-    doa_updated_ms_ago = now - doa_last_updated_at if doa_last_updated_at > 0 else None
-    cache_updated_ms_ago = now - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
-    settings_file_exists = _kraken_settings_file_exists()
-    doa_file_exists = _kraken_doa_file_exists()
+    doa_last_updated_at = doa_last_updated_at_ms()
+    doa_updated_ms_ago = now_ - doa_last_updated_at if doa_last_updated_at > 0 else None
+    cache_updated_ms_ago = now_ - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
+    settings_file_exists = kraken_settings_file_exists()
+    doa_file_exists = kraken_doa_file_exists()
     doa_ok = doa_updated_ms_ago < 1000 and doa_file_exists if doa_updated_ms_ago else False
     kraken_service_running = is_kraken_service_running() if not in_docker else None
     kraken_sdr_connected = is_kraken_sdr_connected() if not in_docker else None
@@ -347,7 +284,7 @@ def cache():
     longitude = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'longitude')
     curr_frequency = latest.frequency_hz if latest else None
     if not curr_frequency:
-        curr_frequency = _get_cached_frequency_from_kraken_config()
+        curr_frequency = get_cached_frequency_from_kraken_config()
     curr_ant_arrangement = latest.ant_arrangement if latest else None
     if not curr_ant_arrangement:
         curr_ant_arrangement = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement')
@@ -389,8 +326,8 @@ def reboot():
 
 
 def create_app():
-    app.logger.info(f'Kraken settings file: {KRAKEN_SETTINGS_FILE}, exists: {_kraken_settings_file_exists()}')
-    app.logger.info(f'Kraken DOA file: {DOA_FILE}, exists: {_kraken_doa_file_exists()}')
+    app.logger.info(f'Kraken settings file: {KRAKEN_SETTINGS_FILE}, exists: {kraken_settings_file_exists()}')
+    app.logger.info(f'Kraken DOA file: {DOA_FILE}, exists: {kraken_doa_file_exists()}')
 
     now = datetime.now()
     if not os.path.exists(BACKUP_DIR_NAME):

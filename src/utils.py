@@ -1,6 +1,9 @@
 import json
 import os
+import re
 import time
+
+from src.config import DOA_FILE, KRAKEN_SETTINGS_FILE, WEB_UI_FILE_NEW, WEB_UI_FILE_OLD
 
 config_cache = dict()
 
@@ -60,3 +63,42 @@ def get_cached_config_value(path: str, key: str, ttl_ms=1000):
     config_cache[(path, key)] = [result, now]
     return result
 
+
+def doa_last_updated_at_ms() -> int:
+    try:
+        return int(os.path.getmtime(DOA_FILE) * 1000)
+    except OSError:
+        return 0
+
+
+def kraken_doa_file_exists() -> bool:
+    return os.path.exists(DOA_FILE)
+
+
+def kraken_settings_file_exists() -> bool:
+    return os.path.exists(KRAKEN_SETTINGS_FILE)
+
+
+def get_cached_frequency_from_kraken_config() -> int:
+    frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
+    return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
+
+
+def get_kraken_version() -> str:
+    env_version = os.getenv('KRAKEN_VERSION', None)
+    if env_version is not None:
+        return str(env_version)
+    else:
+        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
+        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
+        try:
+            with open(ui_file) as f:
+                match = re.search(version_regex, f.read())
+
+            return match.groups()[0] if match and len(match.groups()) else None
+        except FileNotFoundError:
+            return None
+
+
+def now() -> int:
+    return int(time.time() * 1000)
