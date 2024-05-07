@@ -343,5 +343,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    ws_client.run_in_thread()
+    # ws_client.run_in_thread()
     app.run(host='0.0.0.0', port=8082)
