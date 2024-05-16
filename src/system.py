@@ -11,7 +11,7 @@ KRAKEN_POWER_RELAY_PIN_BCM = 27
 
 
 def is_in_docker():
-    return os.environ.get('IS_IN_DOCKER', None)
+    return os.environ.get('IS_IN_DOCKER', False)
 
 
 def kraken_sdr_power_off():
