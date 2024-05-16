@@ -1,6 +1,5 @@
 import shutil
 import traceback
-from dataclasses import dataclass
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -9,14 +8,13 @@ from flask_cors import CORS
 from flask_compress import Compress
 
 from src import ws_client
-from src.config import (LOG_LEVEL, SETTINGS_FILE, TIME, DOA_TIME_THRESHOLD_MS, ARRAY_ARRANGEMENT, DOA_ANGLE,
-                        FREQUENCY_HZ, CONFIDENCE, RSSI, NOCALL, PROXY_VERSION, BACKUP_DIR_NAME, DOA_READ_REGULARITY_MS,
+from src.app_data import app_data
+from src.config import (LOG_LEVEL, SETTINGS_FILE, NOCALL, PROXY_VERSION, BACKUP_DIR_NAME, DOA_READ_REGULARITY_MS,
                         KRAKEN_SETTINGS_FILENAME)
 from src.system import *
 from src.utils import *
-from packaging.version import parse as parse_version
 
-from src.utils import get_kraken_version, kraken_doa_file_exists, doa_last_updated_at_ms, \
+from src.utils import kraken_doa_file_exists, doa_last_updated_at_ms, \
     get_cached_frequency_from_kraken_config, kraken_settings_file_exists, now
 
 if not os.path.exists(SETTINGS_FILE):
@@ -25,16 +23,6 @@ if not os.path.exists(SETTINGS_FILE):
 
 if not os.path.exists(KRAKEN_SETTINGS_FILE):
     raise Exception(f'File {KRAKEN_SETTINGS_FILE} does not exist')
-
-
-@dataclass(eq=True, frozen=True)
-class CacheRecord:
-    timestamp: int
-    doa: float
-    confidence: float
-    rssi: float
-    frequency_hz: int
-    ant_arrangement: str
 
 
 class Error:
@@ -47,89 +35,10 @@ class Error:
 
 app = Flask(__name__)
 app.debug = True
-app.kraken_version = get_kraken_version()
 app.logger.setLevel(LOG_LEVEL)
-app.cache: set[CacheRecord] = set()
-app.cache_last_updated_at = 0
-app.array_angle: float = get_config_value(SETTINGS_FILE, 'array_angle')
 compress = Compress()
 compress.init_app(app)
 CORS(app)
-
-
-def version_specific_time(ll: list) -> int:
-    if app.kraken_version is not None and parse_version(app.kraken_version) == parse_version('1.6'):
-        app.logger.debug(f'Kraken version: {app.kraken_version}. Use _now function.')
-        return now()
-    else:
-        app.logger.debug(f'Kraken version: {app.kraken_version}. Use TIME.')
-        return int(ll[TIME])
-
-
-def update_cache():
-    app.logger.debug('Updating app cache...')
-    try:
-        app.logger.debug(f'Current app cache size: {len(app.cache)}')
-        time_threshold = now() - DOA_TIME_THRESHOLD_MS
-        app.logger.debug(f'now = {now()}, time_threshold = {time_threshold}')
-        app.cache = set([item for item in app.cache if item.timestamp >= time_threshold])
-        app.logger.debug(f'Reduced by time threshold {time_threshold}, app cache size: {len(app.cache)}')
-
-        if not kraken_doa_file_exists():
-            app.logger.debug(f'File {DOA_FILE} does not exist. Skipping...')
-            return
-
-        if app.cache_last_updated_at >= doa_last_updated_at_ms():
-            app.logger.debug(f'File {DOA_FILE} has not changed. Skipping...')
-            return
-
-        app.logger.debug(f'Parsing {DOA_FILE}...')
-        with open(DOA_FILE) as f:
-            read = f.read()
-            app.logger.debug(f'Data read: {read[0:200]} ...')
-            lines = read.split('\n')
-            app.logger.debug(f'{len(lines)} lines read')
-
-        for line in lines:
-            app.logger.debug(f'Processing a line str={line[0:100]}...')
-            if not line:
-                app.logger.debug('Line is too short. Skipping...')
-                continue
-
-            ll = line.split(', ')
-            if len(ll) < 9:
-                app.logger.debug(f'DOA is of the wrong format: {ll}')
-                continue
-
-            ant_arrangement = ll[ARRAY_ARRANGEMENT]
-            app.logger.debug(f'Antenna array type: {ant_arrangement}')
-            # A hack for DOA heading for UCA array. Because KrakenSDR counts the angle counterclockwise
-            if ant_arrangement == 'UCA':
-                app.logger.debug('Set doa_angle=360-DOA_ANGLE')
-                doa_angle = 360-float(ll[DOA_ANGLE])
-            else:
-                app.logger.debug('Set doa_angle=DOA_ANGLE')
-                doa_angle = float(ll[DOA_ANGLE])
-
-            if app.array_angle is not None:
-                app.logger.debug(f'Applying offset array_angle={app.array_angle} degrees...')
-                doa_angle = normalize_angle(doa_angle + app.array_angle)
-            frequency_hz = int(ll[FREQUENCY_HZ])
-            data = CacheRecord(timestamp=version_specific_time(ll),
-                               doa=round(doa_angle, 3),
-                               confidence=round(float(ll[CONFIDENCE]), 2),
-                               rssi=round(float(ll[RSSI]), 2),
-                               frequency_hz=frequency_hz,
-                               ant_arrangement=ll[ARRAY_ARRANGEMENT])
-
-            if data.timestamp > time_threshold:
-                app.logger.debug(f'Adding a line {data} to cache')
-                app.cache.add(data)
-                app.cache_last_updated_at = now()
-            else:
-                app.logger.debug(f'Line {line[0:30]} is outdated (time_threshold = {time_threshold}, line ts = {data.timestamp}, delta = {time_threshold - data.timestamp}). Skipping...')
-    except:
-        app.logger.error(traceback.format_exc())
 
 
 @app.post('/frequency')
@@ -329,14 +238,15 @@ def create_app():
     app.logger.info(f'Kraken settings file: {KRAKEN_SETTINGS_FILE}, exists: {kraken_settings_file_exists()}')
     app.logger.info(f'Kraken DOA file: {DOA_FILE}, exists: {kraken_doa_file_exists()}')
 
-    now = datetime.now()
+    now_ = datetime.now()
     if not os.path.exists(BACKUP_DIR_NAME):
         os.makedirs(BACKUP_DIR_NAME)
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=update_cache, trigger='interval', seconds=DOA_READ_REGULARITY_MS / 1000.0)
+    scheduler.add_job(func=app_data.update_cache, args=[app.logger], trigger='interval',
+                      seconds=DOA_READ_REGULARITY_MS / 1000.0)
     scheduler.start()
-    app.logger.info(f'Cache updater started {now.isoformat()}, running')
-    destination = os.path.join(BACKUP_DIR_NAME, f'{now.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
+    app.logger.info(f'Cache updater started {now_.isoformat()}, running')
+    destination = os.path.join(BACKUP_DIR_NAME, f'{now_.strftime("%Y%m%d-%H%M%S")}-{KRAKEN_SETTINGS_FILENAME}.bak')
     shutil.copyfile(KRAKEN_SETTINGS_FILE, destination)
     return app
 
