@@ -18,6 +18,8 @@ else:
 
 WEB_UI_FILE_NEW = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_config.py')
 WEB_UI_FILE_OLD = os.path.join(DOA_PATH, '_UI/_web_interface/kraken_web_interface.py')
+WEB_UI_VARIABLES_FILE = os.path.join(DOA_PATH, '_ui/_web_interface/variables.py')
+
 BACKUP_DIR_NAME = os.path.join(DOA_PATH, 'settings_backups')
 DOA_READ_REGULARITY_MS = int(os.getenv('DOA_READ_REGULARITY_MS', 100))
 DOA_TIME_THRESHOLD_MS = int(os.getenv('DOA_TIME_THRESHOLD_MS', 5000))

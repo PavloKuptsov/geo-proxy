@@ -2,8 +2,9 @@ import json
 import os
 import re
 import time
+from typing import Optional
 
-from src.config import DOA_FILE, KRAKEN_SETTINGS_FILE, WEB_UI_FILE_NEW, WEB_UI_FILE_OLD
+from src.config import DOA_FILE, KRAKEN_SETTINGS_FILE, WEB_UI_FILE_NEW, WEB_UI_FILE_OLD, WEB_UI_VARIABLES_FILE
 
 config_cache = dict()
 
@@ -84,20 +85,34 @@ def get_cached_frequency_from_kraken_config() -> int:
     return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
 
 
-def get_kraken_version() -> str:
+def get_kraken_version() -> Optional[str]:
+    version = None
     env_version = os.getenv('KRAKEN_VERSION', None)
     if env_version is not None:
-        return str(env_version)
-    else:
-        version_regex = re.compile(r'html\.Div\(\"Version (.*)\"')
-        ui_file = WEB_UI_FILE_NEW if os.path.exists(WEB_UI_FILE_NEW) else WEB_UI_FILE_OLD
-        try:
-            with open(ui_file) as f:
-                match = re.search(version_regex, f.read())
+        version = str(env_version)
 
-            return match.groups()[0] if match and len(match.groups()) else None
-        except FileNotFoundError:
-            return None
+    # 1.7 and higher
+    if not version:
+        version = get_regex_match_from_file(WEB_UI_VARIABLES_FILE, re.compile(r'SOFTWARE_VERSION\s=\s\"(.*)\"'))
+
+    # 1.6.x
+    if not version:
+        version = get_regex_match_from_file(WEB_UI_FILE_NEW, re.compile(r'html\.Div\(\"Version (.*)\"'))
+
+    # pre-1.6
+    if not version:
+        version = get_regex_match_from_file(WEB_UI_FILE_OLD, re.compile(r'html\.Div\(\"Version (.*)\"'))
+
+    return version
+
+
+def get_regex_match_from_file(file_path: str, regex) -> Optional[str]:
+    if not os.path.exists(file_path):
+        return None
+
+    with open(WEB_UI_FILE_OLD) as f:
+        match = re.search(regex, f.read())
+    return match.groups()[0] if match and len(match.groups()) else None
 
 
 def now() -> int:
