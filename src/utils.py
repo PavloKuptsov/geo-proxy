@@ -17,8 +17,8 @@ def normalize_angle(angle: float) -> float:
 
 
 def is_valid_frequency(frequency_hz: int) -> bool:
-    min_supported_freq_hz = 24 * 1000 * 1000
-    max_supported_freq_hz = 1766 * 1000 * 1000
+    min_supported_freq_hz = 24_000_000
+    max_supported_freq_hz = 1_766_000_000
     return min_supported_freq_hz <= frequency_hz <= max_supported_freq_hz
 
 
@@ -82,7 +82,7 @@ def kraken_settings_file_exists() -> bool:
 
 def get_cached_frequency_from_kraken_config() -> int:
     frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
-    return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
+    return int(float(frequency_mhz) * 1_000_000) if frequency_mhz else None
 
 
 def get_kraken_version() -> Optional[str]:

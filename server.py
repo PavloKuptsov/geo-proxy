@@ -53,7 +53,7 @@ def set_frequency():
         if not is_valid_frequency(frequency_hz):
             return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
-        frequency_mhz = frequency_hz / (1.0 * 1000 * 1000)
+        frequency_mhz = frequency_hz / 1_000_000.0
         if frequency_hz != get_cached_frequency_from_kraken_config():
             settings = dict()
             settings['center_freq'] = frequency_mhz
@@ -118,7 +118,7 @@ def get_settings():
     kraken_config = read_config(KRAKEN_SETTINGS_FILE)
     lat = kraken_config['latitude']
     lon = kraken_config['longitude']
-    frequency_hz = int(kraken_config['center_freq'] * (1000 * 1000))
+    frequency_hz = int(kraken_config['center_freq'] * 1_000_000)
     alias = kraken_config['station_id'] if kraken_config['station_id'] != NOCALL else None
     return jsonify({
         "array_angle": app.array_angle,
