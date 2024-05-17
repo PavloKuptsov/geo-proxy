@@ -140,7 +140,7 @@ def healthcheck():
     in_docker = is_in_docker()
     doa_last_updated_at = doa_last_updated_at_ms()
     doa_updated_ms_ago = now_ - doa_last_updated_at if doa_last_updated_at > 0 else None
-    cache_updated_ms_ago = now_ - app.cache_last_updated_at if app.cache_last_updated_at > 0 else None
+    cache_updated_ms_ago = now_ - app_data.cache_last_updated_at if app_data.cache_last_updated_at > 0 else None
     settings_file_exists = kraken_settings_file_exists()
     doa_file_exists = kraken_doa_file_exists()
     doa_ok = doa_updated_ms_ago < 1000 and doa_file_exists if doa_updated_ms_ago else False
