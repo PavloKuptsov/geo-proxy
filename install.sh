@@ -3,7 +3,7 @@
 install_dependencies()
 {
   echo "[-     ] Installing dependencies"
-  if apt-get install -y python3-full; then
+  if apt-get install -y python3-pip python3-virtualenv; then
     echo "[+     ] pip installed or already present"
   else
     echo "[*     ] Error during pip installation, updating repositories"
