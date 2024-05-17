@@ -8,7 +8,7 @@ install_dependencies()
   else
     echo "[*     ] Error during pip installation, updating repositories"
     apt update
-    apt install python3-pip
+    apt-get install -y python3-pip python3-virtualenv
     echo "[+     ] pip installed successfully"
   fi
   echo "[+-    ] Creating virtualenv"
