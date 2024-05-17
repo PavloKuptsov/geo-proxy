@@ -1,6 +1,6 @@
 import os
 
-PROXY_VERSION = '2024.04.12'
+PROXY_VERSION = '2024.05.18'
 
 LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
 SETTINGS_FILENAME = 'geo_settings.json'
