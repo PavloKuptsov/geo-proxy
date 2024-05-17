@@ -90,8 +90,8 @@ def set_array_angle():
         array_angle = payload.get('array_angle', None)
         if array_angle is not None and not is_valid_angle(float(array_angle)):
             return Response(Error(f'"{array_angle}" is not a valid angle').to_json(), status=400)
-        app.array_angle = round(float(array_angle), 3) if array_angle is not None else None
-        set_config_value(SETTINGS_FILE, 'array_angle', app.array_angle)
+        app_data.array_angle = round(float(array_angle), 3) if array_angle is not None else None
+        set_config_value(SETTINGS_FILE, 'array_angle', app_data.array_angle)
         return get_settings()
     except:
         app.logger.error(traceback.format_exc())
@@ -121,7 +121,7 @@ def get_settings():
     frequency_hz = int(kraken_config['center_freq'] * 1_000_000)
     alias = kraken_config['station_id'] if kraken_config['station_id'] != NOCALL else None
     return jsonify({
-        "array_angle": app.array_angle,
+        "array_angle": app_data.array_angle,
         "lat": lat,
         "lon": lon,
         "frequency_hz": frequency_hz,
@@ -156,23 +156,23 @@ def healthcheck():
         "cache_updated_ms_ago": cache_updated_ms_ago,
         "doa_file_exists": doa_file_exists,
         "settings_file_exists": settings_file_exists,
-        "kraken_service_version": app.kraken_version,
+        "kraken_service_version": app_data.kraken_version,
         "kraken_service_running": kraken_service_running,
         "kraken_sdr_connected": kraken_sdr_connected,
         "kraken_suspended": not (kraken_service_running and kraken_sdr_connected) if not in_docker else None,
         "cpu_temperature": cpu_temperature,
-        "array_angle": app.array_angle,
+        "array_angle": app_data.array_angle,
         "proxy_version": PROXY_VERSION
     })
 
 
 @app.get('/cache')
 def cache():
-    app.logger.debug(f'Responding with cache (args={request.args}). Current size: {len(app.cache)}')
+    app.logger.debug(f'Responding with cache (args={request.args}). Current size: {len(app_data.cache)}')
     confidence = request.args.get('confidence')
     rssi = request.args.get('rssi')
     newer_than = request.args.get('newer_than')
-    result = sorted(list(app.cache), key=lambda x: x.timestamp, reverse=True)
+    result = sorted(list(app_data.cache), key=lambda x: x.timestamp, reverse=True)
     latest = result[0] if result else None
 
     if confidence:
@@ -184,7 +184,7 @@ def cache():
     if newer_than:
         result = [record for record in result if record.timestamp >= int(newer_than)]
 
-    app.logger.debug(f'Filtered cache size: {len(app.cache)}')
+    app.logger.debug(f'Filtered cache size: {len(app_data.cache)}')
 
     data = [[record.timestamp, record.doa, record.confidence, record.rssi, record.frequency_hz] for record in result]
 
@@ -204,7 +204,7 @@ def cache():
         'arr': curr_ant_arrangement,
         'alias': station_alias if station_alias != NOCALL else None,
         'freq': curr_frequency,
-        'array_angle': app.array_angle,
+        'array_angle': app_data.array_angle,
         'data': data
     })
 
