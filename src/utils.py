@@ -112,7 +112,7 @@ def get_regex_match_from_file(file_path: str, regex) -> Optional[str]:
 
     with open(file_path) as f:
         match = re.search(regex, f.read())
-    return match.groups()[0] if match and len(match.groups()) else None
+    return match.group(1) if match and len(match.groups()) else None
 
 
 def now() -> int:
