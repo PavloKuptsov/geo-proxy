@@ -87,6 +87,10 @@ def _get_cached_frequency_from_kraken_config() -> int:
     frequency_mhz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'center_freq', 400)
     return int(float(frequency_mhz) * 1000 * 1000) if frequency_mhz else None
 
+def _get_cached_bandwith_from_kraken_config() -> int:
+    bandwithHz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'vfo_bw_0', 400)
+    return int(bandwithHz) if bandwithHz else None
+
 
 def _get_kraken_version() -> str:
     env_version = os.getenv('KRAKEN_VERSION', None)
@@ -279,6 +283,8 @@ def get_settings():
         "lat": lat,
         "lon": lon,
         "frequency_hz": frequency_hz,
+        "bandwith": int(kraken_config["vfo_bw_0"]),
+        "vfo_mode": kraken_config["vfo_mode"],
         "alias": alias
     })
 
@@ -351,6 +357,7 @@ def cache():
     curr_ant_arrangement = latest.ant_arrangement if latest else None
     if not curr_ant_arrangement:
         curr_ant_arrangement = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement')
+    bandwith = _get_cached_bandwith_from_kraken_config()
 
     return jsonify({
         'lat': latitude if latitude is not None else 0,
@@ -359,6 +366,7 @@ def cache():
         'alias': station_alias if station_alias != NOCALL else None,
         'freq': curr_frequency,
         'array_angle': app.array_angle,
+        'bandwith': bandwith,
         'data': data
     })
 
