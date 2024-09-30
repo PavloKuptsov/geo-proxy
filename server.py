@@ -125,6 +125,8 @@ def get_settings():
         "lat": lat,
         "lon": lon,
         "frequency_hz": frequency_hz,
+        "bandwidth": int(kraken_config["vfo_bw_0"]),
+        "vfo_mode": kraken_config["vfo_mode"],
         "alias": alias
     })
 
@@ -197,6 +199,7 @@ def cache():
     curr_ant_arrangement = latest.ant_arrangement if latest else None
     if not curr_ant_arrangement:
         curr_ant_arrangement = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'ant_arrangement')
+    bandwidth = get_cached_bandwidth_from_kraken_config()
 
     return jsonify({
         'lat': latitude if latitude is not None else 0,
@@ -205,6 +208,7 @@ def cache():
         'alias': station_alias if station_alias != NOCALL else None,
         'freq': curr_frequency,
         'array_angle': app_data.array_angle,
+        'bandwidth': bandwidth,
         'data': data
     })
 

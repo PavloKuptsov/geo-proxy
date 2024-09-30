@@ -105,6 +105,10 @@ def get_kraken_version() -> Optional[str]:
 
     return version
 
+def get_cached_bandwidth_from_kraken_config() -> Optional[int]:
+    bandwidth_hz = get_cached_config_value(KRAKEN_SETTINGS_FILE, 'vfo_bw_0', 400)
+    return int(bandwidth_hz) if bandwidth_hz else None
+
 
 def get_regex_match_from_file(file_path: str, regex) -> Optional[str]:
     if not os.path.exists(file_path):
