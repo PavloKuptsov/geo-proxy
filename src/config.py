@@ -1,8 +1,8 @@
 import os
 
-PROXY_VERSION = '2024.10.01'
+PROXY_VERSION = '2024.11.26'
 
-LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'WARNING'))
+LOG_LEVEL = str(os.getenv('LOG_LEVEL', 'INFO'))
 SETTINGS_FILENAME = 'geo_settings.json'
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), SETTINGS_FILENAME)
 KRAKEN_SETTINGS_FILENAME = 'settings.json'
