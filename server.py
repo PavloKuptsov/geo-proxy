@@ -54,6 +54,7 @@ def set_frequency():
             return Response(Error(f'Frequency {frequency_hz} is out of range').to_json(), status=400)
 
         frequency_mhz = frequency_hz / 1_000_000.0
+        app.logger.info(f"Updating frequency: {frequency_mhz}")
         if frequency_hz != get_cached_frequency_from_kraken_config():
             settings = dict()
             settings['center_freq'] = frequency_mhz
@@ -76,6 +77,7 @@ def set_coordinates():
         return Response(Error('Invalid coordinates').to_json(), status=400)
     try:
         settings = {'latitude': lat, 'longitude': lon, 'location_source': 'Static'}
+        app.logger.info(f"Updating antenna coordinates: {settings}")
         update_config(KRAKEN_SETTINGS_FILE, settings)
         return get_settings()
     except:
@@ -91,6 +93,7 @@ def set_array_angle():
         if array_angle is not None and not is_valid_angle(float(array_angle)):
             return Response(Error(f'"{array_angle}" is not a valid angle').to_json(), status=400)
         app_data.array_angle = round(float(array_angle), 3) if array_angle is not None else None
+        app.logger.info(f"Updating antenna array angle (heading): {app_data.array_angle}")
         set_config_value(SETTINGS_FILE, 'array_angle', app_data.array_angle)
         return get_settings()
     except:
@@ -106,6 +109,7 @@ def set_settings():
         station_alias = payload.get('alias', None)
         if station_alias is not None:
             params['station_id'] = str(station_alias).strip()[0:20]
+        app.logger.info(f"Updating settings: {params}")
         update_config(KRAKEN_SETTINGS_FILE, params)
         return get_settings()
     except:
